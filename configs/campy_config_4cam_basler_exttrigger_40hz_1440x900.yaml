@@ -1,0 +1,42 @@
+# Four-camera validation config for Basler GigE external-trigger testing.
+# Uses reduced 1440x900 ROI at 40 Hz.
+
+# Recording parameters
+videoFolder: "./test_4cam_basler_40hz_1440x900"
+videoFilename: "0.mp4"
+frameRate: 40
+recTimeInSec: 600
+
+# Camera parameters
+numCams: 4
+cameraSelection: [0,1,2,3]
+cameraNames: ["Camera1","Camera2","Camera3","Camera4"]
+cameraMake: "basler"
+cameraSerialNo: ["40356999","40676951","40325885","40482786"]
+cameraSettings:
+  - "./configs/cam2_a2A1920-51gmPRO_40356999_1440.pfs"
+  - "./configs/cam3_a2A1920-51gmPRO_40676951_1440.pfs"
+  - "./configs/cam4_a2A1920-51gmPRO_40325885_1440.pfs"
+  - "./configs/cam7_a2A1920-51gmPRO_40482786_1440.pfs"
+frameWidth: 1440
+frameHeight: 900
+cameraDebug: True
+grabTimeoutInMs: 1000
+bufferSize: 500
+
+# Compression parameters
+gpuID: [-1,-1,-1,-1]
+pixelFormatInput: "gray"
+pixelFormatOutput: "yuv420p"
+codec: "h264"
+quality: 17
+ffmpegLogLevel: "warning"
+
+# Display parameters
+chunkLengthInSec: 5
+displayFrameRate: 5
+displayDownsample: 2
+
+# Trigger parameters
+cameraTrigger: "Line2"
+startArduino: False

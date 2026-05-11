@@ -1,0 +1,39 @@
+# One-camera validation config for Basler GigE external-trigger testing.
+# Uses cam2 with Compression Beyond enabled in the PFS.
+
+# Recording parameters
+videoFolder: "./test_1cam_basler_40hz_compress"
+videoFilename: "0.mp4"
+frameRate: 40
+recTimeInSec: 60
+
+# Camera parameters
+numCams: 1
+cameraSelection: [0]
+cameraNames: ["Camera1"]
+cameraMake: "basler"
+cameraSerialNo: ["40356999"]
+cameraSettings:
+  - "./configs/cam2_a2A1920-51gmPRO_40356999_compress.pfs"
+frameWidth: 1920
+frameHeight: 1200
+cameraDebug: True
+grabTimeoutInMs: 1000
+bufferSize: 500
+
+# Compression parameters
+gpuID: [-1]
+pixelFormatInput: "gray"
+pixelFormatOutput: "yuv420p"
+codec: "h264"
+quality: 17
+ffmpegLogLevel: "warning"
+
+# Display parameters
+chunkLengthInSec: 5
+displayFrameRate: 0
+displayDownsample: 2
+
+# Trigger parameters
+cameraTrigger: "Line2"
+startArduino: False

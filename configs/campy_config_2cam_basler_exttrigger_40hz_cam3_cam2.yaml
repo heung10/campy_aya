@@ -1,0 +1,40 @@
+# Two-camera validation config for Basler GigE external-trigger testing.
+# Uses cam3 and cam2 at 40 Hz.
+
+# Recording parameters
+videoFolder: "./test_2cam_basler_40hz_cam3_cam2"
+videoFilename: "0.mp4"
+frameRate: 40
+recTimeInSec: 3600
+
+# Camera parameters
+numCams: 2
+cameraSelection: [0,1]
+cameraNames: ["Camera1","Camera2"]
+cameraMake: "basler"
+cameraSerialNo: ["40676951","40356999"]
+cameraSettings:
+  - "./configs/cam3_a2A1920-51gmPRO_40676951.pfs"
+  - "./configs/cam2_a2A1920-51gmPRO_40356999.pfs"
+frameWidth: 1920
+frameHeight: 1200
+cameraDebug: True
+grabTimeoutInMs: 1000
+bufferSize: 500
+
+# Compression parameters
+gpuID: [-1,-1]
+pixelFormatInput: "gray"
+pixelFormatOutput: "yuv420p"
+codec: "h264"
+quality: 17
+ffmpegLogLevel: "warning"
+
+# Display parameters
+chunkLengthInSec: 5
+displayFrameRate: 5
+displayDownsample: 2
+
+# Trigger parameters
+cameraTrigger: "Line2"
+startArduino: False

@@ -1,0 +1,8 @@
+imageio
+imageio-ffmpeg
+matplotlib
+numpy
+pyserial
+pyyaml
+scikit-image
+PyQt5
