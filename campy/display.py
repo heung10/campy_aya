@@ -1,0 +1,56 @@
+"""
+
+"""
+import sys, time, logging, warnings
+import numpy as np
+import matplotlib as mpl
+warnings.filterwarnings("ignore")
+mpl.use('Qt5Agg') # ignore qtapp warning...
+import matplotlib.pyplot as plt
+
+
+def DrawFigure(num):
+	mpl.rcParams['toolbar'] = 'None' 
+
+	figure = plt.figure(num)
+	ax = plt.axes([0,0,1,1], frameon=False)
+
+	plt.axis('off')
+	plt.autoscale(tight=True)
+	plt.ion()
+
+	imageWindow = ax.imshow(
+		np.zeros((1,1), dtype='uint8'),
+		interpolation='none',
+		cmap='gray',
+		vmin=0,
+		vmax=255,
+	)
+
+	figure.canvas.draw()
+	plt.show(block=False)
+
+	return figure, imageWindow
+
+
+def DisplayFrames(cam_params, dispQueue):
+	n_cam = cam_params['n_cam']
+
+	figure, imageWindow = DrawFigure(n_cam+1)
+	while(True):
+		try:
+			if dispQueue:
+				img = dispQueue.popleft()
+				if isinstance(img, str) and img == 'STOP':
+					break
+				try:
+					imageWindow.set_data(img)
+					figure.canvas.draw()
+					figure.canvas.flush_events()
+				except Exception:
+					pass
+			else:
+				time.sleep(0.01)
+		except KeyboardInterrupt:
+			break
+	plt.close(figure)
