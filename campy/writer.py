@@ -57,14 +57,16 @@ def OpenWriter(cam_params, queue):
 			# Nvidia GPU (NVENC) encoder optimized parameters
 			print("Opened: {} using GPU {} to compress the stream.".format(full_file_name, cam_params["gpuID"]))
 			if cam_params["gpuMake"] == "nvidia":
-				if preset == "None":
-					preset = "fast"
 				gpu_params = [
-					"-preset", preset, # set to "fast", "llhp", or "llhq" for h264 or hevc
 					"-qp", quality,
 					"-bf:v", "0",
 					"-gpu", gpuID,
 					]
+				# If no preset is explicitly requested, let ffmpeg/nvenc choose its
+				# own default. Some driver/ffmpeg combinations reject the forced
+				# "fast" preset even though plain NVENC encoding works.
+				if preset != "None":
+					gpu_params = ["-preset", preset] + gpu_params
 				if cam_params["codec"] == "h264":
 					codec = "h264_nvenc"
 				elif cam_params["codec"] == "h265":
