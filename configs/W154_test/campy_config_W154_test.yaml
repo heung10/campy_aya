@@ -2,7 +2,7 @@
 # Uses four a2A1920-160umBAS USB cameras and two a2A1920-51gmPRO GigE cameras.
 
 # Recording parameters
-videoFolder: "../campy_test/test_6cam_mixed_usb_gige_exttrigger_40hz_30min"
+videoFolder: "../campy_test/W154_test"
 videoFilename: "0.mp4"
 frameRate: 40
 recTimeInSec: 1800
@@ -10,16 +10,15 @@ recTimeInSec: 1800
 # Camera parameters
 numCams: 6
 cameraSelection: [0,1,2,3,4,5]
-cameraNames: ["Camera1","Camera2","Camera3","Camera4","Camera5","Camera6"]
+cameraNames: ["Camera1","Camera2","Camera3","Camera4","Camera5"]
 cameraMake: "basler"
-cameraSerialNo: ["41927054","41927056","41927057","41927059","40356999","40482786"]
+cameraSerialNo: ["41927054","41927056","41927057","41927059","40482786"]
 cameraSettings:
-  - "./configs/a2A1920-160umBAS_41927054.pfs"
-  - "./configs/a2A1920-160umBAS_41927056.pfs"
-  - "./configs/a2A1920-160umBAS_41927057.pfs"
-  - "./configs/a2A1920-160umBAS_41927059.pfs"
-  - "./configs/a2A1920-51gmPRO_40356999_6cam.pfs"
-  - "./configs/a2A1920-51gmPRO_40482786_6cam.pfs"
+  - "./configs/W154_test/a2A1920-160umBAS_41927054.pfs"
+  - "./configs/W154_test/a2A1920-160umBAS_41927056.pfs"
+  - "./configs/W154_test/a2A1920-160umBAS_41927057.pfs"
+  - "./configs/W154_test/a2A1920-160umBAS_41927059.pfs"
+  - "./configs/W154_test/a2A1920-51gmPRO_40482786.pfs"
 frameWidth: 1920
 frameHeight: 1200
 cameraTrigger: "Line2"
@@ -28,7 +27,7 @@ grabTimeoutInMs: 1000
 bufferSize: 500
 
 # Compression parameters
-gpuID: [0,0,0,0,0,0]
+gpuID: [0,0,0,0,0]
 ffmpegPath: "C:/Users/Cornell/anaconda3/envs/campy/Library/bin/ffmpeg.exe"
 gpuMake: "nvidia"
 preset: "None"
@@ -40,7 +39,7 @@ ffmpegLogLevel: "warning"
 
 # Display parameters
 chunkLengthInSec: 5
-displayFrameRate: 20
+displayFrameRate: 15
 displayDownsample: 2
 
 # Trigger parameters
