@@ -1,0 +1,62 @@
+# Four-camera W154 config with Pulse Pal software-started external trigger.
+# Command:
+#   campy-acquire ./configs/W154_WT/campy_config_W154_WT_pulsepal.yaml
+
+# Recording parameters
+videoFolder: "../campy_test/WT_training/W154_WT4/06132026_pulsepal"
+videoFilename: "0.mp4"
+frameRate: 40
+recTimeInSec: 1800
+infiniteRecording: True
+
+# Camera parameters
+numCams: 4
+cameraSelection: [0,1,2,3]
+cameraNames: ["Camera1","Camera2","Camera3","Camera4"]
+cameraMake: "basler"
+cameraSerialNo: ["41927054","41927056","41927059","40482786"]
+cameraSettings:
+  - "./configs/W154_WT/a2A1920-160umBAS_41927054.pfs"
+  - "./configs/W154_WT/a2A1920-160umBAS_41927056.pfs"
+  - "./configs/W154_WT/a2A1920-160umBAS_41927059.pfs"
+  - "./configs/W154_WT/a2A1920-51gmPRO_40482786.pfs"
+frameWidth: 1920
+frameHeight: 1200
+cameraTrigger: "Line2"
+cameraDebug: True
+grabTimeoutInMs: 1000
+bufferSize: 500
+
+# Compression parameters
+gpuID: [0,0,0,0]
+ffmpegPath: "C:/Users/Cornell/anaconda3/envs/campy/Library/bin/ffmpeg.exe"
+gpuMake: "nvidia"
+preset: "None"
+pixelFormatInput: "gray"
+pixelFormatOutput: "yuv420p"
+codec: "h264"
+quality: 17
+ffmpegLogLevel: "warning"
+
+# Display parameters
+chunkLengthInSec: 5
+displayFrameRate: 15
+displayDownsample: 2
+
+# Trigger parameters
+startArduino: False
+startTriggerController: True
+triggerController: "pulsepal"
+waitForTriggerStart: True
+
+# Pulse Pal parameters
+pulsePalPythonPath: "C:/Users/Cornell/Downloads/PulsePal-master/PulsePal-master/Python/Python3"
+pulsePalPort: "COM10"
+pulsePalChannels: [1,2,3,4]
+pulseFrequencyHz: 40
+pulseHighTimeSec: 0.005
+pulseTrainDurationSec: 1800
+pulsePalContinuous: True
+pulsePalVoltage: 5
+pulsePalRestingVoltage: 0
+pulsePalTriggerChannel: 1

@@ -116,6 +116,9 @@ def GrabData(cam_params):
 
 
 def ShouldStopAcquisition(cam_params, grabdata, frameNumber):
+	if cam_params["infiniteRecording"]:
+		return False
+
 	# For externally triggered runs, stop by elapsed host time from the first
 	# received frame instead of chasing an equal saved-frame count on every
 	# camera. This makes cross-camera wall-clock duration comparable even if
@@ -136,6 +139,14 @@ def StartGrabbing(camera, cam_params, cam):
 	return grabbing
 
 
+def WaitForTriggerStart(cam_params, readyQueue, triggerStartEvent):
+	if readyQueue is not None:
+		readyQueue.put(cam_params["cameraName"])
+	if triggerStartEvent is not None:
+		print(cam_params["cameraName"], "waiting for trigger start.", flush=True)
+		triggerStartEvent.wait()
+
+
 def CountFPS(grabdata, frameNumber, timeStamp):
 	if frameNumber % grabdata["chunkLengthInFrames"] == 0:
 		timeElapsed = timeStamp - grabdata["timeStamp"][0]
@@ -144,7 +155,7 @@ def CountFPS(grabdata, frameNumber, timeStamp):
 			.format(grabdata["cameraName"], frameNumber, fpsCount, round(timeElapsed)))
 
 
-def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue):
+def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue=None, triggerStartEvent=None, stopEvent=None):
 	# Open the camera object
 	cam, camera, cam_params = OpenCamera(cam_params, stopWriteQueue)
 
@@ -157,9 +168,10 @@ def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue)
 	grabbing = StartGrabbing(camera, cam_params, cam)
 	if not grabbing or camera is None:
 		return
+	WaitForTriggerStart(cam_params, readyQueue, triggerStartEvent)
 
 	frameNumber = 0
-	while(not stopReadQueue):
+	while(not stopReadQueue and not (stopEvent is not None and stopEvent.is_set())):
 		try:
 			# Grab image from camera buffer if available
 			grabResult = cam.GrabFrame(camera, frameNumber, cam_params)

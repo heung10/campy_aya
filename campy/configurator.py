@@ -19,6 +19,7 @@ def DefaultParams():
 	params["videoFilename"] = "0.mp4"
 	params["frameRate"] = 100
 	params["recTimeInSec"] = 10
+	params["infiniteRecording"] = False
 
 	# Camera default parameters
 	params["cameraMake"] = "basler"
@@ -57,8 +58,20 @@ def DefaultParams():
 	# Trigger parameters
 	params["triggerController"] = "arduino"
 	params["startArduino"] = False
+	params["startTriggerController"] = False
+	params["waitForTriggerStart"] = False
 	params["serialPort"] = "COM3"
 	params["digitalPins"] = [0,1,2,3,4,5,6]
+	params["pulsePalPythonPath"] = "None"
+	params["pulsePalPort"] = "COM10"
+	params["pulsePalChannels"] = [1,2,3,4]
+	params["pulseFrequencyHz"] = 40
+	params["pulseHighTimeSec"] = 0.005
+	params["pulseTrainDurationSec"] = 1800
+	params["pulsePalContinuous"] = True
+	params["pulsePalVoltage"] = 5
+	params["pulsePalRestingVoltage"] = 0
+	params["pulsePalTriggerChannel"] = 1
 
 	return params
 
@@ -77,6 +90,10 @@ def AutoParams(params, default_params):
 		"quality",
 		"chunkLengthInSec",
 		"displayDownsample",
+		"pulseFrequencyHz",
+		"pulseHighTimeSec",
+		"pulseTrainDurationSec",
+		"pulsePalVoltage",
 		]
 
 	for i in range(len(range_params)):
@@ -191,7 +208,7 @@ def OptParams(cam_params):
 		if type(cam_params[key]) is list:
 			if len(cam_params[key]) == cam_params["numCams"]:
 				cam_params[key] = cam_params[key][cam_params["n_cam"]]
-			elif key == "digitalPins":
+			elif key in ["digitalPins", "pulsePalChannels"]:
 				continue
 			else:
 				logging.warning("{} size mismatch with numCams. Using list idx {}."\
@@ -270,6 +287,12 @@ def ParseClargs(parser):
 		type=float,
 		help="Recording time in seconds.",
 	)    
+	parser.add_argument(
+		"--infiniteRecording",
+		dest="infiniteRecording",
+		type=bool,
+		help="If True, record until Ctrl+C instead of stopping at recTimeInSec.",
+	)
 	parser.add_argument(
 		"--numCams", 
 		dest="numCams", 
@@ -460,13 +483,25 @@ def ParseClargs(parser):
 		"--triggerController",
 		dest="triggerController",
 		type=ast.literal_eval,
-		help="Microntroller make for camera triggering. Currently supported: 'arduino'.",
+		help="Microcontroller make for camera triggering. Currently supported: 'arduino', 'pulsepal'.",
 	)
 	parser.add_argument(
 		"--startArduino",
 		dest="startArduino",
 		type=bool,
 		help="If True, start Arduino after initializing cameras.",
+	)
+	parser.add_argument(
+		"--startTriggerController",
+		dest="startTriggerController",
+		type=bool,
+		help="If True, start the selected trigger controller.",
+	)
+	parser.add_argument(
+		"--waitForTriggerStart",
+		dest="waitForTriggerStart",
+		type=bool,
+		help="If True, wait for all cameras to arm, then prompt before starting triggers.",
 	)
 	parser.add_argument(
 		"--serialPort",
@@ -479,6 +514,66 @@ def ParseClargs(parser):
 		dest="digitalPins",
 		type=int,
 		help="Digital pins on microcontroller board for sending TTL camera triggers.",
+	)
+	parser.add_argument(
+		"--pulsePalPythonPath",
+		dest="pulsePalPythonPath",
+		type=ast.literal_eval,
+		help="Optional folder containing PulsePal.py.",
+	)
+	parser.add_argument(
+		"--pulsePalPort",
+		dest="pulsePalPort",
+		type=ast.literal_eval,
+		help="Serial port for communicating with Pulse Pal.",
+	)
+	parser.add_argument(
+		"--pulsePalChannels",
+		dest="pulsePalChannels",
+		type=ast.literal_eval,
+		help="Pulse Pal output channels used for camera TTL triggers.",
+	)
+	parser.add_argument(
+		"--pulseFrequencyHz",
+		dest="pulseFrequencyHz",
+		type=float,
+		help="Pulse Pal output frequency in Hz.",
+	)
+	parser.add_argument(
+		"--pulseHighTimeSec",
+		dest="pulseHighTimeSec",
+		type=float,
+		help="Pulse Pal TTL high time in seconds.",
+	)
+	parser.add_argument(
+		"--pulseTrainDurationSec",
+		dest="pulseTrainDurationSec",
+		type=float,
+		help="Pulse Pal finite train duration in seconds.",
+	)
+	parser.add_argument(
+		"--pulsePalContinuous",
+		dest="pulsePalContinuous",
+		type=bool,
+		help="If True, Pulse Pal channels run continuously until stopped.",
+	)
+	parser.add_argument(
+		"--pulsePalVoltage",
+		dest="pulsePalVoltage",
+		type=float,
+		help="Pulse Pal phase 1 voltage.",
+	)
+	parser.add_argument(
+		"--pulsePalRestingVoltage",
+		dest="pulsePalRestingVoltage",
+		type=float,
+		help="Pulse Pal resting voltage.",
+	)
+	parser.add_argument(
+		"--pulsePalTriggerChannel",
+		dest="pulsePalTriggerChannel",
+		type=int,
+		help="Pulse Pal trigger channel to link when hardware trigger input is used.",
 	)
 
 	return parser.parse_args()

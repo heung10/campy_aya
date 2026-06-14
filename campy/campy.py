@@ -22,7 +22,6 @@ import multiprocessing as mp
 from campy import writer, display, configurator
 from campy.trigger import trigger
 from campy.cameras import unicam
-from campy.utils.utils import HandleKeyboardInterrupt
 
 def OpenSystems():
 	# Configure parameters
@@ -32,9 +31,6 @@ def OpenSystems():
 	systems = unicam.LoadSystems(params)
 	systems = unicam.GetDeviceList(systems, params)
 
-	# Start camera triggers if configured
-	systems = trigger.StartTriggers(systems, params)
-
 	return systems, params
 
 
@@ -43,7 +39,15 @@ def CloseSystems(systems, params):
 	unicam.CloseSystems(systems, params)
 
 
-def AcquireOneCamera(n_cam):
+def AcquireOneCamera(args):
+	if isinstance(args, tuple):
+		n_cam, readyQueue, triggerStartEvent, stopEvent = args
+	else:
+		n_cam = args
+		readyQueue = None
+		triggerStartEvent = None
+		stopEvent = None
+
 	# Initialize param dictionary for this camera stream
 	cam_params = configurator.ConfigureCamParams(systems, params, n_cam)
 
@@ -65,20 +69,83 @@ def AcquireOneCamera(n_cam):
 	threading.Thread(
 		target = unicam.GrabFrames,
 		daemon = True,
-		args = (cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue,),
+		args = (cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue, triggerStartEvent, stopEvent,),
 		).start()
 
 	# Start video file writer (main "consumer" process)
 	writer.WriteFrames(cam_params, writeQueue, stopReadQueue, stopWriteQueue)
 
 
-def Main():
-	with HandleKeyboardInterrupt():
-		# Acquire cameras in parallel with Windows- and Linux-compatible pool
-		p = mp.get_context("spawn").Pool(params["numCams"])
-		p.map_async(AcquireOneCamera,range(params["numCams"])).get()
+def TriggerControllerEnabled(params):
+	return params["startArduino"] or params["startTriggerController"]
 
-	CloseSystems(systems, params)
+
+def WaitForCamerasReady(readyQueue, acquireResult):
+	ready_cameras = set()
+	while len(ready_cameras) < params["numCams"]:
+		if acquireResult.ready():
+			acquireResult.get()
+		try:
+			camera_name = readyQueue.get(timeout=0.25)
+			ready_cameras.add(camera_name)
+			print("{}/{} cameras ready: {}".format(
+				len(ready_cameras),
+				params["numCams"],
+				", ".join(sorted(ready_cameras)),
+			), flush=True)
+		except queue.Empty:
+			continue
+
+
+def Main():
+	triggerStartEvent = None
+	stopEvent = None
+	p = None
+
+	try:
+		try:
+			# Acquire cameras in parallel with Windows- and Linux-compatible pool
+			mp_context = mp.get_context("spawn")
+			manager = mp_context.Manager()
+			stopEvent = manager.Event()
+			p = mp_context.Pool(params["numCams"])
+
+			if TriggerControllerEnabled(params) and not params["waitForTriggerStart"]:
+				trigger.StartTriggers(systems, params)
+
+			if params["waitForTriggerStart"]:
+				readyQueue = manager.Queue()
+				triggerStartEvent = manager.Event()
+				cameraArgs = [(n_cam, readyQueue, triggerStartEvent, stopEvent) for n_cam in range(params["numCams"])]
+			else:
+				cameraArgs = [(n_cam, None, None, stopEvent) for n_cam in range(params["numCams"])]
+
+			acquireResult = p.map_async(AcquireOneCamera, cameraArgs)
+
+			if params["waitForTriggerStart"]:
+				WaitForCamerasReady(readyQueue, acquireResult)
+				print("All cameras are ready. Press Enter to start {} trigger.".format(
+					params["triggerController"]
+				), flush=True)
+				input()
+				if TriggerControllerEnabled(params):
+					trigger.StartTriggers(systems, params)
+				triggerStartEvent.set()
+
+			acquireResult.get()
+		except KeyboardInterrupt:
+			print("Stopping acquisition...", flush=True)
+			if stopEvent is not None:
+				stopEvent.set()
+			if triggerStartEvent is not None:
+				triggerStartEvent.set()
+			trigger.StopTriggers(systems, params)
+		finally:
+			if p is not None:
+				p.close()
+				p.join()
+	finally:
+		CloseSystems(systems, params)
 
 # Open systems, creates global 'systems' and 'params' variables
 systems, params = OpenSystems()
