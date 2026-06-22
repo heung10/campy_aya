@@ -238,7 +238,7 @@ def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue,
 
 
 def SaveMetadata(cam_params, grabdata):
-	full_folder_name = os.path.join(cam_params["videoFolder"], cam_params["cameraName"])
+	full_folder_name = os.path.join(cam_params["saveFolder"], cam_params["cameraName"])
 
 	try:
 		# Zero timeStamps

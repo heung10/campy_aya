@@ -2,8 +2,8 @@
 # Uses four a2A1920-160umBAS USB cameras and two a2A1920-51gmPRO GigE cameras.
 
 # Recording parameters
-# videoFolder: "../campy_test/Shelter/LE1_2/06122026"
-videoFolder: "../campy_test/WT_training/W154_WT4/06132026_3"
+# saveFolder: "../campy_test/Shelter/LE1_2/06122026"
+saveFolder: "../campy_test/WT_training/W154_WT4/06132026_3"
 videoFilename: "0.mp4"
 frameRate: 40
 recTimeInSec: 3600

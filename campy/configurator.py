@@ -15,6 +15,7 @@ def DefaultParams():
 	params = {}
 	# Recording default parameters
 	params["numCams"] = 1
+	params["saveFolder"] = "./test"
 	params["videoFolder"] = "./test"
 	params["videoFilename"] = "0.mp4"
 	params["frameRate"] = 100
@@ -72,6 +73,11 @@ def DefaultParams():
 	params["pulsePalVoltage"] = 5
 	params["pulsePalRestingVoltage"] = 0
 	params["pulsePalTriggerChannel"] = 1
+	params["enableGPIOTimestampLogging"] = False
+	params["gpioSerialPort"] = "COM11"
+	params["gpioBaudRate"] = 119200
+	params["gpioSerialTimeoutSec"] = 0
+	params["gpioLogFilename"] = "gpio_log.csv"
 
 	return params
 
@@ -147,6 +153,23 @@ def ConfigureParams():
 	# Optionally, user can manually set path to find ffmpeg binary.
 	if params["ffmpegPath"] is not "None":
 		os.environ["IMAGEIO_FFMPEG_EXE"] = params["ffmpegPath"]
+
+	return params
+
+
+def NormalizeFolderParams(params):
+	# Prefer the clearer saveFolder name, while preserving videoFolder as a
+	# backward-compatible alias for older configs and internal call sites.
+	save_folder = params.get("saveFolder")
+	video_folder = params.get("videoFolder")
+
+	if save_folder not in [None, "None"]:
+		params["videoFolder"] = save_folder
+	elif video_folder not in [None, "None"]:
+		params["saveFolder"] = video_folder
+	else:
+		params["saveFolder"] = "./test"
+		params["videoFolder"] = "./test"
 
 	return params
 
@@ -227,6 +250,8 @@ def CheckConfig(params, clargs):
 	for key,value in auto_params.items():
 		params[key] = value
 
+	params = NormalizeFolderParams(params)
+
 	invalid_keys = []
 	for key in params.keys():
 		if key not in clargs.__dict__.keys():
@@ -256,6 +281,7 @@ def CombineConfigAndClargs(clargs):
 	for key, value in clargs.__dict__.items():
 		if value is not None:
 			params[key] = value
+	params = NormalizeFolderParams(params)
 	return params
 
 
@@ -266,9 +292,14 @@ def ParseClargs(parser):
 
 	# Recording arguments
 	parser.add_argument(
+		"--saveFolder", 
+		dest="saveFolder", 
+		help="Folder in which to save videos and session metadata.",
+	)
+	parser.add_argument(
 		"--videoFolder", 
 		dest="videoFolder", 
-		help="Folder in which to save videos.",
+		help="Deprecated alias for saveFolder.",
 	)
 	parser.add_argument(
 		"--videoFilename", 
@@ -574,6 +605,36 @@ def ParseClargs(parser):
 		dest="pulsePalTriggerChannel",
 		type=int,
 		help="Pulse Pal trigger channel to link when hardware trigger input is used.",
+	)
+	parser.add_argument(
+		"--enableGPIOTimestampLogging",
+		dest="enableGPIOTimestampLogging",
+		type=bool,
+		help="If True, log Neurologger GPIO timestamps into the session folder.",
+	)
+	parser.add_argument(
+		"--gpioSerialPort",
+		dest="gpioSerialPort",
+		type=ast.literal_eval,
+		help="Serial port for the Neurologger GPIO interface board.",
+	)
+	parser.add_argument(
+		"--gpioBaudRate",
+		dest="gpioBaudRate",
+		type=int,
+		help="Baud rate for the Neurologger GPIO interface board.",
+	)
+	parser.add_argument(
+		"--gpioSerialTimeoutSec",
+		dest="gpioSerialTimeoutSec",
+		type=float,
+		help="Serial timeout in seconds for the Neurologger GPIO interface board.",
+	)
+	parser.add_argument(
+		"--gpioLogFilename",
+		dest="gpioLogFilename",
+		type=ast.literal_eval,
+		help="Filename for the session-level GPIO timestamp log.",
 	)
 
 	return parser.parse_args()

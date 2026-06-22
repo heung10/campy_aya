@@ -7,7 +7,7 @@ from campy.utils.utils import QueueKeyboardInterrupt
 def OpenWriter(cam_params, queue):
 	try:
 		writing = False
-		folder_name = os.path.join(cam_params["videoFolder"], cam_params["cameraName"])
+		folder_name = os.path.join(cam_params["saveFolder"], cam_params["cameraName"])
 		file_name = cam_params["videoFilename"]
 		full_file_name = os.path.join(folder_name, file_name)
 
@@ -165,7 +165,7 @@ def WriteFrames(cam_params, writeQueue, stopReadQueue, stopWriteQueue):
 	writer.close()
 
 	# Save writer-side stats separately so they reflect the fully drained queue.
-	folder_name = os.path.join(cam_params["videoFolder"], cam_params["cameraName"])
+	folder_name = os.path.join(cam_params["saveFolder"], cam_params["cameraName"])
 	writer_stats_filename = os.path.join(folder_name, 'writer_stats.csv')
 	with open(writer_stats_filename, 'w', newline='') as f:
 		w = csv.writer(f, delimiter=',', quoting=csv.QUOTE_ALL)

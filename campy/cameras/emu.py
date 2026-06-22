@@ -40,7 +40,7 @@ def GetModelName(camera):
 def OpenCamera(cam_params, device):
 	# Open video reader for emulation
 	videoFileName = cam_params["videoFilename"][3:len(cam_params["videoFilename"])]
-	full_file_name = os.path.join(cam_params["videoFolder"], cam_params["cameraName"], videoFileName)
+	full_file_name = os.path.join(cam_params["saveFolder"], cam_params["cameraName"], videoFileName)
 	camera = imageio.get_reader(full_file_name)
 
 	# Set features manually or automatically, depending on configuration

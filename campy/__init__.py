@@ -6,6 +6,7 @@ def CampyParams():
 
 	params = {}
 	# Recording default parameters
+	params["saveFolder"] = "./test"
 	params["videoFolder"] = "./test"
 	params["frameRate"] = 100
 	params["recTimeInSec"] = 10

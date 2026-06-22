@@ -20,6 +20,7 @@ import os, time, sys, logging, threading, queue
 from collections import deque
 import multiprocessing as mp
 from campy import writer, display, configurator
+from campy.gpio import logger as gpio_logger
 from campy.trigger import trigger
 from campy.cameras import unicam
 
@@ -36,6 +37,7 @@ def OpenSystems():
 
 def CloseSystems(systems, params):
 	trigger.StopTriggers(systems, params)
+	gpio_logger.StopLogging(systems)
 	unicam.CloseSystems(systems, params)
 
 
@@ -109,6 +111,7 @@ def Main():
 			manager = mp_context.Manager()
 			stopEvent = manager.Event()
 			p = mp_context.Pool(params["numCams"])
+			gpio_logger.StartLogging(systems, params)
 
 			if TriggerControllerEnabled(params) and not params["waitForTriggerStart"]:
 				trigger.StartTriggers(systems, params)

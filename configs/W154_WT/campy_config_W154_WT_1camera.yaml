@@ -3,33 +3,32 @@
 #   campy-acquire ./configs/W153_WT/campy_config_W154_WT_pulsepal.yaml
 
 # Recording parameters
-# saveFolder: "../campy_test/Shelter/LE1_2/06142026"
-saveFolder: "../campy_test/WT_training/W154_WT4/06162026_am_WT34"
+saveFolder: "../campy_test/WT_training/W154_WT4/06222026_pm_WT5"
+# saveFolder: "../campy_test/WT_training/W154_WT4/06192026_pm_WT2"
+# saveFolder: "../campy_test/test/test/06162026_test"
+
 videoFilename: "0.mp4"
 frameRate: 40
 recTimeInSec: 10000
 infiniteRecording: True
 
 # Camera parameters
-numCams: 4
-cameraSelection: [0,1,2,3]
-cameraNames: ["Camera1","Camera2","Camera3","Camera4"]
+numCams: 1
+cameraSelection: [0]
+cameraNames: ["Camera1"]
 cameraMake: "basler"
-cameraSerialNo: ["41927054","41927056","41927059","40482786"]
+cameraSerialNo: ["24188010"]
 cameraSettings:
-  - "./configs/W154_WT/a2A1920-160umBAS_41927054.pfs"
-  - "./configs/W154_WT/a2A1920-160umBAS_41927056.pfs"
-  - "./configs/W154_WT/a2A1920-160umBAS_41927059.pfs"
-  - "./configs/W154_WT/a2A1920-51gmPRO_40482786.pfs"
-frameWidth: 1920
-frameHeight: 1200
-cameraTrigger: "Line2"
+  - "./configs/W154_WT/acA1300-200uc_24188010.pfs"
+frameWidth: 1280
+frameHeight: 1024
+cameraTrigger: "Line3"
 cameraDebug: True
 grabTimeoutInMs: 1000
 bufferSize: 500
 
 # Compression parameters
-gpuID: [0,0,0,0]
+gpuID: [0]
 ffmpegPath: "C:/Users/Cornell/anaconda3/envs/campy/Library/bin/ffmpeg.exe"
 gpuMake: "nvidia"
 preset: "None"
@@ -53,7 +52,7 @@ waitForTriggerStart: True
 # Pulse Pal parameters
 pulsePalPythonPath: "C:/Users/Cornell/Downloads/PulsePal-master/PulsePal-master/Python/Python3"
 pulsePalPort: "COM10"
-pulsePalChannels: [1,2,3,4]
+pulsePalChannels: [1]
 pulseFrequencyHz: 40
 pulseHighTimeSec: 0.005
 pulseTrainDurationSec: 1800
