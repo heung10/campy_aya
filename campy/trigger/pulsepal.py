@@ -67,7 +67,7 @@ def StartTriggers(systems, params):
 	return systems
 
 
-def StopTriggers(systems):
+def StopTriggerOutputs(systems):
 	pp = systems.get("pulsepal")
 	if pp is None:
 		return
@@ -78,8 +78,20 @@ def StopTriggers(systems):
 	except Exception:
 		pass
 
+
+def CloseTriggerController(systems):
+	pp = systems.get("pulsepal")
+	if pp is None:
+		return
+
+	print("Disconnecting Pulse Pal...", flush=True)
 	try:
 		pp.disconnect()
 	except Exception:
 		pass
 	systems["pulsepal"] = None
+
+
+def StopTriggers(systems):
+	StopTriggerOutputs(systems)
+	CloseTriggerController(systems)

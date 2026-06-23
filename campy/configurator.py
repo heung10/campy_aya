@@ -76,7 +76,6 @@ def DefaultParams():
 	params["enableGPIOTimestampLogging"] = False
 	params["gpioSerialPort"] = "COM11"
 	params["gpioBaudRate"] = 119200
-	params["gpioSerialTimeoutSec"] = 0
 	params["gpioLogFilename"] = "gpio_log.csv"
 
 	return params
@@ -623,12 +622,6 @@ def ParseClargs(parser):
 		dest="gpioBaudRate",
 		type=int,
 		help="Baud rate for the Neurologger GPIO interface board.",
-	)
-	parser.add_argument(
-		"--gpioSerialTimeoutSec",
-		dest="gpioSerialTimeoutSec",
-		type=float,
-		help="Serial timeout in seconds for the Neurologger GPIO interface board.",
 	)
 	parser.add_argument(
 		"--gpioLogFilename",

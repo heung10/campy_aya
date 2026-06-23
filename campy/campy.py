@@ -36,9 +36,43 @@ def OpenSystems():
 
 
 def CloseSystems(systems, params):
-	trigger.StopTriggers(systems, params)
-	gpio_logger.StopLogging(systems)
+	trigger.StopTriggerOutputs(systems, params)
 	unicam.CloseSystems(systems, params)
+	gpio_logger.StopLogging(systems)
+	trigger.CloseTriggerController(systems, params)
+
+
+def TriggerPeriodSec(params):
+	if params["triggerController"] in ["PulsePal", "pulsepal"]:
+		return 1.0 / float(params["pulseFrequencyHz"])
+	return 1.0 / float(params["frameRate"])
+
+
+def StartSynchronizedTrigger(systems, params, triggerStartEvent=None):
+	# Release camera workers first so they are actively waiting on hardware
+	# triggers before Pulse Pal starts generating pulses.
+	if triggerStartEvent is not None:
+		triggerStartEvent.set()
+		time.sleep(min(0.1, max(TriggerPeriodSec(params), 0.02)))
+
+	if TriggerControllerEnabled(params):
+		trigger.StartTriggers(systems, params)
+
+
+def StopSynchronizedTrigger(systems, params, stopEvent=None, triggerStartEvent=None):
+	# If cameras are still waiting for the first trigger, release them so the
+	# worker processes can unwind cleanly.
+	if triggerStartEvent is not None:
+		triggerStartEvent.set()
+
+	# Stop outgoing pulses first so GPIO and camera frame counts stop advancing.
+	trigger.StopTriggerOutputs(systems, params)
+
+	# Allow at most one in-flight trigger period to drain before stopping the
+	# camera processes.
+	if stopEvent is not None:
+		time.sleep(min(0.1, max(TriggerPeriodSec(params), 0.02)))
+		stopEvent.set()
 
 
 def AcquireOneCamera(args):
@@ -111,10 +145,10 @@ def Main():
 			manager = mp_context.Manager()
 			stopEvent = manager.Event()
 			p = mp_context.Pool(params["numCams"])
-			gpio_logger.StartLogging(systems, params)
 
 			if TriggerControllerEnabled(params) and not params["waitForTriggerStart"]:
-				trigger.StartTriggers(systems, params)
+				gpio_logger.StartLogging(systems, params)
+				StartSynchronizedTrigger(systems, params)
 
 			if params["waitForTriggerStart"]:
 				readyQueue = manager.Queue()
@@ -131,18 +165,13 @@ def Main():
 					params["triggerController"]
 				), flush=True)
 				input()
-				if TriggerControllerEnabled(params):
-					trigger.StartTriggers(systems, params)
-				triggerStartEvent.set()
+				gpio_logger.StartLogging(systems, params)
+				StartSynchronizedTrigger(systems, params, triggerStartEvent)
 
 			acquireResult.get()
 		except KeyboardInterrupt:
 			print("Stopping acquisition...", flush=True)
-			if stopEvent is not None:
-				stopEvent.set()
-			if triggerStartEvent is not None:
-				triggerStartEvent.set()
-			trigger.StopTriggers(systems, params)
+			StopSynchronizedTrigger(systems, params, stopEvent, triggerStartEvent)
 		finally:
 			if p is not None:
 				p.close()

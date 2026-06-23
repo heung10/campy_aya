@@ -33,3 +33,21 @@ def StopTriggers(systems, params):
 		if params["triggerController"] != "None":
 			trigger = ImportTrigger(params)
 			trigger.StopTriggers(systems)
+
+
+def StopTriggerOutputs(systems, params):
+	if TriggerControllerEnabled(params):
+		if params["triggerController"] != "None":
+			trigger = ImportTrigger(params)
+			if hasattr(trigger, "StopTriggerOutputs"):
+				trigger.StopTriggerOutputs(systems)
+			else:
+				trigger.StopTriggers(systems)
+
+
+def CloseTriggerController(systems, params):
+	if TriggerControllerEnabled(params):
+		if params["triggerController"] != "None":
+			trigger = ImportTrigger(params)
+			if hasattr(trigger, "CloseTriggerController"):
+				trigger.CloseTriggerController(systems)

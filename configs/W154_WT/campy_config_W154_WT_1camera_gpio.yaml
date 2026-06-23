@@ -4,7 +4,7 @@
 #   campy-acquire ./configs/W154_WT/campy_config_W154_WT_1camera_gpio.yaml
 
 # Recording parameters
-saveFolder: "../campy_test/WT_training/W154_WT4/06222026_pm_WT5_gpio"
+saveFolder: "../campy_test/GPIO_test/06222026"
 
 videoFilename: "0.mp4"
 frameRate: 40
@@ -51,7 +51,7 @@ waitForTriggerStart: True
 # Pulse Pal parameters
 pulsePalPythonPath: "C:/Users/Cornell/Downloads/PulsePal-master/PulsePal-master/Python/Python3"
 pulsePalPort: "COM10"
-pulsePalChannels: [1]
+pulsePalChannels: [1, 2]
 pulseFrequencyHz: 40
 pulseHighTimeSec: 0.005
 pulseTrainDurationSec: 1800
@@ -62,7 +62,6 @@ pulsePalTriggerChannel: 1
 
 # Neurologger GPIO timestamp logging
 enableGPIOTimestampLogging: True
-gpioSerialPort: "COM11"
+gpioSerialPort: "COM6"
 gpioBaudRate: 119200
-gpioSerialTimeoutSec: 0
 gpioLogFilename: "gpio_log.csv"
