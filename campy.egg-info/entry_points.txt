@@ -1,2 +1,4 @@
 [console_scripts]
 campy-acquire = campy.campy:Main
+campy-evaluate = campy.utils.evaluate_session:main
+campy-gui = campy.gui.app:main

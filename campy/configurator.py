@@ -1,7 +1,7 @@
 """
 """
 
-import os, ast, yaml, time, logging, shutil
+import os, sys, ast, yaml, time, logging, shutil
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from campy.cameras import unicam
 
@@ -191,21 +191,28 @@ def ConfigureFFmpeg(params):
 
 
 def FindFFmpeg():
-	try:
-		import imageio_ffmpeg
-		ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
-		if ffmpeg_path and os.path.isfile(ffmpeg_path):
-			return ffmpeg_path
-	except Exception:
-		pass
-
 	ffmpeg_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
 	candidates = []
+	env_prefixes = []
 	conda_prefix = os.environ.get("CONDA_PREFIX")
 	if conda_prefix:
+		env_prefixes.append(conda_prefix)
+	if sys.prefix:
+		env_prefixes.append(sys.prefix)
+	if sys.executable:
+		env_prefixes.append(os.path.dirname(os.path.dirname(sys.executable)))
+
+	seen_prefixes = set()
+	for prefix in env_prefixes:
+		if not prefix:
+			continue
+		prefix = os.path.abspath(prefix)
+		if prefix in seen_prefixes:
+			continue
+		seen_prefixes.add(prefix)
 		candidates.extend([
-			os.path.join(conda_prefix, "Library", "bin", ffmpeg_name),
-			os.path.join(conda_prefix, "bin", ffmpeg_name),
+			os.path.join(prefix, "Library", "bin", ffmpeg_name),
+			os.path.join(prefix, "bin", ffmpeg_name),
 		])
 
 	path_ffmpeg = shutil.which("ffmpeg")
@@ -215,6 +222,14 @@ def FindFFmpeg():
 	for candidate in candidates:
 		if candidate and os.path.isfile(candidate):
 			return candidate
+
+	try:
+		import imageio_ffmpeg
+		ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+		if ffmpeg_path and os.path.isfile(ffmpeg_path):
+			return ffmpeg_path
+	except Exception:
+		pass
 
 	raise FileNotFoundError(
 		"Could not find ffmpeg. Install it in the conda environment or set ffmpegPath."

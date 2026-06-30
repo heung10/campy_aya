@@ -1,4 +1,4 @@
-saveFolder: C:/Users/Cornell/Desktop/Basler/campy_test/GPIO_test/06292026
+saveFolder: C:/Users/Cornell/Desktop/Basler/campy_test/GPIO_test/06302026
 videoFilename: 0.mp4
 frameRate: 40
 recTimeInSec: 10000
@@ -47,4 +47,4 @@ enableGPIOTimestampLogging: true
 gpioSerialPort: COM6
 gpioBaudRate: 119200
 gpioLogFilename: gpio_log.csv
-videoFolder: C:/Users/Cornell/Desktop/Basler/campy_test/GPIO_test/06292026
+videoFolder: C:/Users/Cornell/Desktop/Basler/campy_test/GPIO_test/06302026

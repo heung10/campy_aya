@@ -2,7 +2,12 @@ imageio
 imageio-ffmpeg
 matplotlib
 numpy
+pypylon
 pyserial
 pyyaml
+scipy
 scikit-image
 PyQt5
+
+[exe]
+pyinstaller
