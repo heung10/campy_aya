@@ -4,9 +4,11 @@ reduce redundancy in campy code.
 """
 
 import os, sys, time, csv, logging
+from datetime import datetime
 import numpy as np
 from collections import deque
 from scipy import io as sio
+import imageio.v2 as imageio
 
 
 def ImportCam(make):
@@ -91,6 +93,8 @@ def GrabData(cam_params):
 	grabdata = {}
 	grabdata["timeStamp"] = []
 	grabdata["hostTimeStamp"] = []
+	grabdata["hostDateTimeIso"] = []
+	grabdata["hostDateTimeEpochSec"] = []
 	grabdata["frameNumber"] = []
 	grabdata["frameID"] = []
 	grabdata["cameraName"] = cam_params["cameraName"]
@@ -100,11 +104,16 @@ def GrabData(cam_params):
 	grabdata["frameIdGapCount"] = 0
 	grabdata["firstHostTime"] = None
 
-	# Calculate display rate
-	if cam_params["displayFrameRate"] <= 0:
+	# Calculate preview/display rate. The Qt GUI uses file-based previews while
+	# legacy displayFrameRate controls matplotlib windows.
+	preview_rate = 0
+	if cam_params.get("guiPreviewEnabled", False):
+		preview_rate = cam_params.get("guiPreviewFrameRate", 0)
+	display_rate = max(cam_params["displayFrameRate"], preview_rate)
+	if display_rate <= 0:
 		grabdata["frameRatio"] = float('inf')
-	elif cam_params["displayFrameRate"] > 0 and cam_params["displayFrameRate"] <= cam_params['frameRate']:
-		grabdata["frameRatio"] = int(round(cam_params["frameRate"]/cam_params["displayFrameRate"]))
+	elif display_rate > 0 and display_rate <= cam_params['frameRate']:
+		grabdata["frameRatio"] = int(round(cam_params["frameRate"]/display_rate))
 	else:
 		grabdata["frameRatio"] = cam_params["frameRate"]
 
@@ -147,12 +156,72 @@ def WaitForTriggerStart(cam_params, readyQueue, triggerStartEvent):
 		triggerStartEvent.wait()
 
 
-def CountFPS(grabdata, frameNumber, timeStamp):
+def CountFPS(cam_params, grabdata, frameNumber, timeStamp):
 	if frameNumber % grabdata["chunkLengthInFrames"] == 0:
 		timeElapsed = timeStamp - grabdata["timeStamp"][0]
 		fpsCount = round((frameNumber - 1) / timeElapsed, 1)
+		SaveLiveStatus(cam_params, frameNumber, fpsCount, round(timeElapsed))
 		print('{} collected {} frames at {} fps for {} sec.'\
-			.format(grabdata["cameraName"], frameNumber, fpsCount, round(timeElapsed)))
+			.format(grabdata["cameraName"], frameNumber, fpsCount, round(timeElapsed)), flush=True)
+
+
+def SaveLiveStatus(cam_params, frameNumber, fpsCount, elapsedSec):
+	full_folder_name = os.path.join(cam_params["saveFolder"], cam_params["cameraName"])
+	try:
+		if not os.path.isdir(full_folder_name):
+			os.makedirs(full_folder_name)
+		filename = os.path.join(full_folder_name, "live_status.csv")
+		tmp_filename = "{}.{}.tmp".format(filename, os.getpid())
+		with open(tmp_filename, "w", newline="") as f:
+			w = csv.writer(f, delimiter=",", quoting=csv.QUOTE_MINIMAL)
+			w.writerow(["cameraName", "framesCollected", "fps", "elapsedSec", "updatedEpochSec"])
+			w.writerow([cam_params["cameraName"], frameNumber, fpsCount, elapsedSec, time.time()])
+		os.replace(tmp_filename, filename)
+	except Exception as e:
+		if cam_params.get("cameraDebug", False):
+			logging.error('Caught exception at cameras/unicam.py SaveLiveStatus: {}'.format(e))
+
+
+def SaveGuiPreviewFrame(cam_params, img):
+	if not cam_params.get("guiPreviewEnabled", False):
+		return
+	preview_folder = cam_params.get("guiPreviewFolder", "None")
+	if preview_folder in [None, "None", ""]:
+		return
+
+	try:
+		if not os.path.isdir(preview_folder):
+			os.makedirs(preview_folder)
+
+		downsample = max(1, int(cam_params.get("displayDownsample", 1)))
+		preview = img[::downsample, ::downsample]
+
+		# Keep previews lightweight and broadly displayable.
+		if preview.dtype != np.uint8:
+			preview = np.clip(preview, 0, 255).astype(np.uint8)
+
+		filename = os.path.join(preview_folder, "{}.png".format(cam_params["cameraName"]))
+		tmp_filename = "{}.{}.{}.tmp.png".format(filename, os.getpid(), time.time_ns())
+		imageio.imwrite(tmp_filename, preview)
+
+		# On Windows, Qt/antivirus/filesystem indexing can briefly hold the
+		# previous image. Retry the atomic swap instead of logging noisy errors.
+		replaced = False
+		for _ in range(5):
+			try:
+				os.replace(tmp_filename, filename)
+				replaced = True
+				break
+			except PermissionError:
+				time.sleep(0.01)
+		if not replaced:
+			try:
+				os.remove(tmp_filename)
+			except Exception:
+				pass
+	except Exception as e:
+		if cam_params.get("cameraDebug", False):
+			logging.error('Caught exception at cameras/unicam.py SaveGuiPreviewFrame: {}'.format(e))
 
 
 def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue=None, triggerStartEvent=None, stopEvent=None):
@@ -171,7 +240,21 @@ def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue,
 	WaitForTriggerStart(cam_params, readyQueue, triggerStartEvent)
 
 	frameNumber = 0
-	while(not stopReadQueue and not (stopEvent is not None and stopEvent.is_set())):
+	stop_drain_started = None
+	post_stop_drain_sec = float(cam_params.get("postStopDrainSec", 2.0))
+	while(not stopReadQueue):
+		if stopEvent is not None and stopEvent.is_set():
+			if stop_drain_started is None:
+				stop_drain_started = time.perf_counter()
+			elif time.perf_counter() - stop_drain_started >= post_stop_drain_sec:
+				print(
+					"{} stop drain reached {} sec; closing camera.".format(
+						cam_params["cameraName"],
+						post_stop_drain_sec,
+					),
+					flush=True,
+				)
+				break
 		try:
 			# Grab image from camera buffer if available
 			grabResult = cam.GrabFrame(camera, frameNumber, cam_params)
@@ -193,8 +276,11 @@ def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue,
 			grabdata['frameNumber'].append(frameNumber) # first frame = 1
 			timeStamp = cam.GetTimeStamp(grabResult)
 			grabdata['timeStamp'].append(timeStamp)
+			hostDateTime = datetime.now()
 			hostTimeStamp = time.perf_counter()
 			grabdata['hostTimeStamp'].append(hostTimeStamp)
+			grabdata['hostDateTimeIso'].append(hostDateTime.isoformat(timespec="microseconds"))
+			grabdata['hostDateTimeEpochSec'].append("{:.6f}".format(hostDateTime.timestamp()))
 			if grabdata["firstHostTime"] is None:
 				grabdata["firstHostTime"] = hostTimeStamp
 			frameID = cam.GetFrameID(grabResult)
@@ -202,11 +288,14 @@ def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue,
 				grabdata["frameIdGapCount"] += 1
 			grabdata["frameID"].append(frameID)
 
-			# Display converted, downsampled image in the Window
-			if cam_params["displayFrameRate"] > 0 and frameNumber % grabdata["frameRatio"] == 0:
-				cam.DisplayImage(cam_params, dispQueue, grabResult)
+			# Display/save converted, downsampled previews without touching the
+			# recording queue. GUI preview files are latest-frame-only.
+			if frameNumber % grabdata["frameRatio"] == 0:
+				if cam_params["displayFrameRate"] > 0:
+					cam.DisplayImage(cam_params, dispQueue, grabResult)
+				SaveGuiPreviewFrame(cam_params, img)
 
-			CountFPS(grabdata, frameNumber, timeStamp)
+			CountFPS(cam_params, grabdata, frameNumber, timeStamp)
 
 			cam.ReleaseFrame(grabResult)
 
@@ -217,6 +306,8 @@ def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue,
 			# External-triggered Basler acquisition can legitimately poll between
 			# triggers, so suppress timeout spam and keep waiting for the next frame.
 			if cam_params["cameraMake"] == "basler" and "Grab timed out" in str(e):
+				if stopEvent is not None and stopEvent.is_set():
+					break
 				grabdata["timeoutCount"] += 1
 				time.sleep(0.001)
 				continue
@@ -262,6 +353,8 @@ def SaveMetadata(cam_params, grabdata):
 			grabdata['frameID'],
 			grabdata['timeStamp'],
 			grabdata['hostTimeStamp'],
+			grabdata['hostDateTimeIso'],
+			grabdata['hostDateTimeEpochSec'],
 		], dtype=object)
 		np.save(npy_filename,x)
 
@@ -272,19 +365,30 @@ def SaveMetadata(cam_params, grabdata):
 		matdata['frameID'] = grabdata['frameID']
 		matdata['timeStamp'] = grabdata['timeStamp']
 		matdata['hostTimeStamp'] = grabdata['hostTimeStamp']
+		matdata['hostDateTimeIso'] = grabdata['hostDateTimeIso']
+		matdata['hostDateTimeEpochSec'] = grabdata['hostDateTimeEpochSec']
 		sio.savemat(mat_filename, matdata, do_compression=True)
 
 		# Save per-frame metadata in a CSV that is easier to inspect directly.
 		frame_meta_filename = os.path.join(full_folder_name, 'frame_metadata.csv')
 		with open(frame_meta_filename, 'w', newline='') as f:
 			w = csv.writer(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-			w.writerow(["savedFrameNumber", "cameraFrameID", "cameraTimeStampSec", "hostTimeStampSec"])
+			w.writerow([
+				"savedFrameNumber",
+				"cameraFrameID",
+				"cameraTimeStampSec",
+				"hostTimeStampSec",
+				"hostDateTimeIso",
+				"hostDateTimeEpochSec",
+			])
 			for i in range(len(grabdata['frameNumber'])):
 				w.writerow([
 					grabdata['frameNumber'][i],
 					grabdata['frameID'][i],
 					grabdata['timeStamp'][i],
 					grabdata['hostTimeStamp'][i],
+					grabdata['hostDateTimeIso'][i],
+					grabdata['hostDateTimeEpochSec'][i],
 				])
 
 		# Save parameters and recording metadata to csv spreadsheet

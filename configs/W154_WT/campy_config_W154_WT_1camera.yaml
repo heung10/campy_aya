@@ -3,7 +3,7 @@
 #   campy-acquire ./configs/W153_WT/campy_config_W154_WT_pulsepal.yaml
 
 # Recording parameters
-saveFolder: "../campy_test/WT_training/W154_WT4/06222026_pm_WT5"
+saveFolder: "../campy_test/WT_training/W154_WT4/06232026_pm_WT6"
 # saveFolder: "../campy_test/WT_training/W154_WT4/06192026_pm_WT2"
 # saveFolder: "../campy_test/test/test/06162026_test"
 

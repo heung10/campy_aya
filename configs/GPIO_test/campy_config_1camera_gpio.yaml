@@ -1,29 +1,24 @@
-saveFolder: ../campy_test/GPIO_test/06232026
+saveFolder: C:/Users/Cornell/Desktop/Basler/campy_test/GPIO_test/06292026
 videoFilename: 0.mp4
-frameRate: 40.0
-recTimeInSec: 10000.0
+frameRate: 40
+recTimeInSec: 10000
 infiniteRecording: true
 numCams: 1
-cameraSelection:
-- 0
-cameraNames:
-- Camera1
+cameraSelection: [0]
+cameraNames: [1b]
 cameraMake: basler
-cameraSerialNo:
-- '24188010'
-cameraSettings:
-- ./configs/W154_WT/acA1300-200uc_24188010.pfs
-frameWidth: 1280
-frameHeight: 1024
-cameraTrigger: Line3
-cameraOut: 2
+cameraSerialNo: ['41927057']
+cameraSettings: [./configs/GPIO_test/a2A1920-160umBAS_41927057_1b.pfs]
+frameWidth: 1920
+frameHeight: 1200
+cameraTrigger: Line2
+cameraOut: Line3
 cameraOutSource: ExposureActive
 cameraDebug: true
 grabTimeoutInMs: 1000
 bufferSize: 500
-gpuID:
-- 0
-ffmpegPath: C:/Users/Cornell/anaconda3/envs/campy/Library/bin/ffmpeg.exe
+gpuID: [0]
+ffmpegPath: auto
 gpuMake: nvidia
 preset: None
 pixelFormatInput: gray
@@ -32,18 +27,16 @@ codec: h264
 quality: 17
 ffmpegLogLevel: warning
 chunkLengthInSec: 5
-displayFrameRate: 15.0
+displayFrameRate: 15
 displayDownsample: 2
 startArduino: false
 startTriggerController: true
 triggerController: pulsepal
 waitForTriggerStart: true
-pulsePalPythonPath: C:/Users/Cornell/Downloads/PulsePal-master/PulsePal-master/Python/Python3
-pulsePalPort: COM10
-pulsePalChannels:
-- 1
-- 2
-pulseFrequencyHz: 40.0
+pulsePalPythonPath: auto
+pulsePalPort: COM4
+pulsePalChannels: [1, 2]
+pulseFrequencyHz: 40
 pulseHighTimeSec: 0.005
 pulseTrainDurationSec: 1800
 pulsePalContinuous: true
@@ -54,4 +47,4 @@ enableGPIOTimestampLogging: true
 gpioSerialPort: COM6
 gpioBaudRate: 119200
 gpioLogFilename: gpio_log.csv
-videoFolder: ../campy_test/GPIO_test/06232026
+videoFolder: C:/Users/Cornell/Desktop/Basler/campy_test/GPIO_test/06292026

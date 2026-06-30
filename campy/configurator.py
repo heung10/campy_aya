@@ -1,7 +1,7 @@
 """
 """
 
-import os, ast, yaml, time, logging
+import os, ast, yaml, time, logging, shutil
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from campy.cameras import unicam
 
@@ -33,7 +33,8 @@ def DefaultParams():
 
 	# Flir camera default parameters
 	params["cameraTrigger"] = "None" # "Line3"
-	params["cameraOut"] = 2
+	params["cameraOut"] = "Line2"
+	params["cameraOutSource"] = "None"
 	params["bufferMode"] = "OldestFirst"
 	params["bufferSize"] = 100
 	params["cameraExposureTimeInUs"] = 1500
@@ -55,6 +56,10 @@ def DefaultParams():
 	params["chunkLengthInSec"] = 5
 	params["displayFrameRate"] = 10
 	params["displayDownsample"] = 2
+	params["guiPreviewEnabled"] = False
+	params["guiPreviewFrameRate"] = 5
+	params["guiPreviewFolder"] = "None"
+	params["guiStopFile"] = "None"
 
 	# Trigger parameters
 	params["triggerController"] = "arduino"
@@ -131,6 +136,12 @@ def AutoParams(params, default_params):
 		print("{} set to invalid value in config. Setting to default ({})."\
 				.format("displayFrameRate", default_value))
 
+	if params["guiPreviewFrameRate"] < 0:
+		default_value = default_params["guiPreviewFrameRate"]
+		params["guiPreviewFrameRate"] = default_value
+		print("{} set to invalid value in config. Setting to default ({})."\
+				.format("guiPreviewFrameRate", default_value))
+
 	# Handle missing config parameters
 	if "numCams" in params.keys():
 		if "cameraNames" not in params.keys():
@@ -149,11 +160,65 @@ def ConfigureParams():
 	clargs = ParseClargs(parser)
 	params = CombineConfigAndClargs(clargs)
 
-	# Optionally, user can manually set path to find ffmpeg binary.
-	if params["ffmpegPath"] is not "None":
-		os.environ["IMAGEIO_FFMPEG_EXE"] = params["ffmpegPath"]
+	params = ConfigureFFmpeg(params)
 
 	return params
+
+
+def IsUnset(value):
+	return value in [None, "", "None", "none", "auto", "Auto", "AUTO"]
+
+
+def ConfigureFFmpeg(params):
+	ffmpeg_path = params.get("ffmpegPath", "None")
+	if IsUnset(ffmpeg_path):
+		ffmpeg_path = FindFFmpeg()
+	else:
+		ffmpeg_path = os.path.expandvars(os.path.expanduser(str(ffmpeg_path)))
+		if os.path.isdir(ffmpeg_path):
+			ffmpeg_path = os.path.join(
+				ffmpeg_path,
+				"ffmpeg.exe" if os.name == "nt" else "ffmpeg",
+			)
+		if not os.path.isfile(ffmpeg_path):
+			raise FileNotFoundError(
+				"ffmpegPath does not point to an ffmpeg executable: {}".format(ffmpeg_path)
+			)
+
+	params["ffmpegPath"] = ffmpeg_path
+	os.environ["IMAGEIO_FFMPEG_EXE"] = ffmpeg_path
+	return params
+
+
+def FindFFmpeg():
+	try:
+		import imageio_ffmpeg
+		ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+		if ffmpeg_path and os.path.isfile(ffmpeg_path):
+			return ffmpeg_path
+	except Exception:
+		pass
+
+	ffmpeg_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+	candidates = []
+	conda_prefix = os.environ.get("CONDA_PREFIX")
+	if conda_prefix:
+		candidates.extend([
+			os.path.join(conda_prefix, "Library", "bin", ffmpeg_name),
+			os.path.join(conda_prefix, "bin", ffmpeg_name),
+		])
+
+	path_ffmpeg = shutil.which("ffmpeg")
+	if path_ffmpeg:
+		candidates.append(path_ffmpeg)
+
+	for candidate in candidates:
+		if candidate and os.path.isfile(candidate):
+			return candidate
+
+	raise FileNotFoundError(
+		"Could not find ffmpeg. Install it in the conda environment or set ffmpegPath."
+	)
 
 
 def NormalizeFolderParams(params):
@@ -395,8 +460,14 @@ def ParseClargs(parser):
 	parser.add_argument(
 		"--cameraOut", 
 		dest="cameraOut",
-		type=int, 
-		help="Integer indicating camera output line for exposure active signal (e.g. 2).",
+		type=ast.literal_eval, 
+		help="Camera output line for exposure active signal (e.g. 'Line3').",
+	)
+	parser.add_argument(
+		"--cameraOutSource",
+		dest="cameraOutSource",
+		type=ast.literal_eval,
+		help="Basler output signal source for cameraOut (e.g. 'ExposureActive' or 'FrameActive').",
 	)
 	parser.add_argument(
 		"--cameraExposureTimeInUs", 
@@ -506,6 +577,28 @@ def ParseClargs(parser):
 		dest="displayDownsample",
 		type=int,
 		help="Downsampling factor for displaying images.",
+	)
+	parser.add_argument(
+		"--guiPreviewEnabled",
+		dest="guiPreviewEnabled",
+		type=bool,
+		help="If True, write latest preview images for the Qt GUI.",
+	)
+	parser.add_argument(
+		"--guiPreviewFrameRate",
+		dest="guiPreviewFrameRate",
+		type=float,
+		help="GUI preview image update rate in Hz.",
+	)
+	parser.add_argument(
+		"--guiPreviewFolder",
+		dest="guiPreviewFolder",
+		help="Folder where GUI preview images are written.",
+	)
+	parser.add_argument(
+		"--guiStopFile",
+		dest="guiStopFile",
+		help="File path used by the GUI to request graceful acquisition stop.",
 	)
 
 	# Microcontroller triggering arguments

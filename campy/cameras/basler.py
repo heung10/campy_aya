@@ -62,7 +62,50 @@ def LoadSettings(cam_params, camera):
 	cam_params['frameWidth'] = camera.Width.GetValue()
 	cam_params['frameHeight'] = camera.Height.GetValue()
 
+	ConfigureOutputLine(cam_params, camera)
+
 	return cam_params
+
+
+def ConfigureOutputLine(cam_params, camera):
+	line_source = cam_params.get("cameraOutSource", "None")
+	line_out = cam_params.get("cameraOut", "None")
+	line_name = NormalizeLineName(line_out)
+	if line_source in [None, "None"] or line_name is None:
+		return
+
+	try:
+		camera.LineSelector.SetValue(line_name)
+		camera.LineMode.SetValue("Output")
+		camera.LineSource.SetValue(str(line_source))
+		print(
+			"Configured {} output {} -> {}.".format(
+				cam_params["cameraName"],
+				line_name,
+				line_source,
+			),
+			flush=True,
+		)
+	except Exception as e:
+		raise RuntimeError(
+			"Unable to configure {} output {} to {}: {}".format(
+				cam_params["cameraName"],
+				line_name,
+				line_source,
+				e,
+			)
+		)
+
+
+def NormalizeLineName(line_value):
+	if line_value in [None, "None", "none", 0, "0"]:
+		return None
+	if isinstance(line_value, str):
+		line_value = line_value.strip()
+		if line_value.lower().startswith("line"):
+			return "Line{}".format(line_value[4:])
+		return "Line{}".format(int(line_value))
+	return "Line{}".format(int(line_value))
 
 
 def StartGrabbing(camera):

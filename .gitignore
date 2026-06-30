@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+build/
+dist/
+*.spec~
+
+*.egg-info/
+
+# Local recordings and generated previews can become very large.
+campy_test/
+configs/campy_test/
+
+# Local environment folders.
+.venv/
+env/
+venv/
+
+# Temporary GUI/acquisition files.
+*.tmp
+*.tmp.png
+*_stop.flag

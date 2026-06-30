@@ -1,0 +1,20 @@
+name: campy
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - scipy
+  - matplotlib
+  - pyqt
+  - pyyaml
+  - pyserial
+  - scikit-image
+  - imageio
+  - imageio-ffmpeg
+  - pip:
+      - pypylon
+      - pyinstaller
+      - -e .

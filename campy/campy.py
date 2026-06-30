@@ -133,6 +133,21 @@ def WaitForCamerasReady(readyQueue, acquireResult):
 			continue
 
 
+def GuiStopRequested(params):
+	stop_file = params.get("guiStopFile", "None")
+	return stop_file not in [None, "None", ""] and os.path.exists(stop_file)
+
+
+def WaitForAcquisitionComplete(acquireResult, systems, params, stopEvent, triggerStartEvent):
+	while not acquireResult.ready():
+		if GuiStopRequested(params):
+			print("GUI stop requested. Stopping acquisition...", flush=True)
+			StopSynchronizedTrigger(systems, params, stopEvent, triggerStartEvent)
+			break
+		time.sleep(0.1)
+	return acquireResult.get()
+
+
 def Main():
 	triggerStartEvent = None
 	stopEvent = None
@@ -168,7 +183,7 @@ def Main():
 				gpio_logger.StartLogging(systems, params)
 				StartSynchronizedTrigger(systems, params, triggerStartEvent)
 
-			acquireResult.get()
+			WaitForAcquisitionComplete(acquireResult, systems, params, stopEvent, triggerStartEvent)
 		except KeyboardInterrupt:
 			print("Stopping acquisition...", flush=True)
 			StopSynchronizedTrigger(systems, params, stopEvent, triggerStartEvent)

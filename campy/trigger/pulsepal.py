@@ -3,13 +3,36 @@ Pulse Pal trigger controller support.
 """
 
 import sys
+import time
+from pathlib import Path
+
+from campy.configurator import IsUnset
 
 
 def _load_pulsepal(params):
-	if params["pulsePalPythonPath"] != "None":
-		if params["pulsePalPythonPath"] not in sys.path:
-			sys.path.append(params["pulsePalPythonPath"])
-	from PulsePal import PulsePalObject
+	try:
+		from PulsePal import PulsePalObject
+		return PulsePalObject
+	except ImportError as import_error:
+		try:
+			vendor_path = Path(__file__).resolve().parents[1] / "vendor"
+			if str(vendor_path) not in sys.path:
+				sys.path.append(str(vendor_path))
+			from campy.vendor.PulsePal import PulsePalObject
+			return PulsePalObject
+		except ImportError:
+			pass
+
+		pulsepal_path = params.get("pulsePalPythonPath", "None")
+		if IsUnset(pulsepal_path):
+			raise ImportError(
+				"Could not import PulsePal from the environment or campy.vendor. "
+				"Install/copy PulsePal.py into the environment or set "
+				"pulsePalPythonPath to the folder containing PulsePal.py."
+			) from import_error
+		if pulsepal_path not in sys.path:
+			sys.path.append(pulsepal_path)
+		from PulsePal import PulsePalObject
 	return PulsePalObject
 
 
@@ -77,6 +100,20 @@ def StopTriggerOutputs(systems):
 		pp.abortPulseTrains()
 	except Exception:
 		pass
+	for ch in range(1, 5):
+		try:
+			pp.setContinuousLoop(ch, 0)
+		except Exception:
+			pass
+	try:
+		pp.abortPulseTrains()
+	except Exception:
+		pass
+	try:
+		pp.triggerOutputChannels(0, 0, 0, 0)
+	except Exception:
+		pass
+	time.sleep(0.05)
 
 
 def CloseTriggerController(systems):
