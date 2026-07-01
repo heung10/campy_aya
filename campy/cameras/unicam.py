@@ -7,8 +7,14 @@ import os, sys, time, csv, logging
 from datetime import datetime
 import numpy as np
 from collections import deque
-from scipy import io as sio
 import imageio.v2 as imageio
+
+try:
+	from scipy import io as sio
+	SCIPY_IO_ERROR = None
+except Exception as e:
+	sio = None
+	SCIPY_IO_ERROR = e
 
 
 def ImportCam(make):
@@ -359,15 +365,22 @@ def SaveMetadata(cam_params, grabdata):
 		np.save(npy_filename,x)
 
 		# Also save frame data to MATLAB file
-		mat_filename = os.path.join(full_folder_name, 'frametimes.mat')
-		matdata = {};
-		matdata['frameNumber'] = grabdata['frameNumber']
-		matdata['frameID'] = grabdata['frameID']
-		matdata['timeStamp'] = grabdata['timeStamp']
-		matdata['hostTimeStamp'] = grabdata['hostTimeStamp']
-		matdata['hostDateTimeIso'] = grabdata['hostDateTimeIso']
-		matdata['hostDateTimeEpochSec'] = grabdata['hostDateTimeEpochSec']
-		sio.savemat(mat_filename, matdata, do_compression=True)
+		if sio is not None:
+			mat_filename = os.path.join(full_folder_name, 'frametimes.mat')
+			matdata = {};
+			matdata['frameNumber'] = grabdata['frameNumber']
+			matdata['frameID'] = grabdata['frameID']
+			matdata['timeStamp'] = grabdata['timeStamp']
+			matdata['hostTimeStamp'] = grabdata['hostTimeStamp']
+			matdata['hostDateTimeIso'] = grabdata['hostDateTimeIso']
+			matdata['hostDateTimeEpochSec'] = grabdata['hostDateTimeEpochSec']
+			sio.savemat(mat_filename, matdata, do_compression=True)
+		else:
+			logging.warning(
+				"Skipping frametimes.mat export for %s because scipy.io is unavailable: %s",
+				cam_params['cameraName'],
+				SCIPY_IO_ERROR,
+			)
 
 		# Save per-frame metadata in a CSV that is easier to inspect directly.
 		frame_meta_filename = os.path.join(full_folder_name, 'frame_metadata.csv')
