@@ -136,3 +136,14 @@ installed on the target computer.
 The `campy/vendor` folder contains optional third-party PulsePal support files
 from Sanworks. Those files are GPLv3 according to their source headers and are
 kept separate from the MIT-licensed campy code.
+
+## Template Configs
+
+Starter templates live in:
+
+```text
+configs/templates/1camera_gpio_template.yaml
+configs/templates/2camera_gpio_template.yaml
+```
+
+They are meant to be copied and edited for each computer / rig.

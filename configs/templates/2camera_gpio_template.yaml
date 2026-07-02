@@ -1,0 +1,60 @@
+# Two-camera PulsePal + Neurologger GPIO template.
+# Copy this file, then edit camera serial/settings and COM ports.
+
+saveFolder: ./campy_test/GPIO_test/example_session_2cam
+videoFilename: 0.mp4
+frameRate: 40
+recTimeInSec: 1800
+infiniteRecording: true
+
+numCams: 2
+cameraSelection: [0, 1]
+cameraNames: [Camera1, Camera2]
+cameraMake: basler
+cameraSerialNo: ["CHANGE_ME_1", "CHANGE_ME_2"]
+cameraSettings:
+  - ./configs/GPIO_test/a2A1920-160umBAS_41927057_1b.pfs
+  - ./configs/GPIO_test/a2A1920-160umBAS_41927057_1b.pfs
+
+frameWidth: 1920
+frameHeight: 1200
+cameraTrigger: Line2
+cameraOut: Line3
+cameraOutSource: ExposureActive
+cameraDebug: true
+grabTimeoutInMs: 1000
+bufferSize: 500
+
+gpuID: [0, 0]
+ffmpegPath: auto
+gpuMake: nvidia
+preset: None
+pixelFormatInput: gray
+pixelFormatOutput: yuv420p
+codec: h264
+quality: 17
+ffmpegLogLevel: warning
+
+chunkLengthInSec: 5
+displayFrameRate: 15
+displayDownsample: 2
+
+startArduino: false
+startTriggerController: true
+triggerController: pulsepal
+waitForTriggerStart: true
+pulsePalPythonPath: auto
+pulsePalPort: COM4
+pulsePalChannels: [1, 2]
+pulseFrequencyHz: 40
+pulseHighTimeSec: 0.005
+pulseTrainDurationSec: 1800
+pulsePalContinuous: true
+pulsePalVoltage: 5
+pulsePalRestingVoltage: 0
+pulsePalTriggerChannel: 1
+
+enableGPIOTimestampLogging: true
+gpioSerialPort: COM6
+gpioBaudRate: 119200
+gpioLogFilename: gpio_log.csv

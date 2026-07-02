@@ -16,7 +16,7 @@ Usage:
 campy-acquire ./configs/campy_config.yaml
 """
 
-import os, time, sys, logging, threading, queue
+import os, time, sys, logging, threading, queue, traceback
 from collections import deque
 import multiprocessing as mp
 from campy import writer, display, configurator
@@ -76,40 +76,45 @@ def StopSynchronizedTrigger(systems, params, stopEvent=None, triggerStartEvent=N
 
 
 def AcquireOneCamera(args):
-	if isinstance(args, tuple):
-		n_cam, readyQueue, triggerStartEvent, stopEvent = args
-	else:
-		n_cam = args
-		readyQueue = None
-		triggerStartEvent = None
-		stopEvent = None
+	try:
+		if isinstance(args, tuple):
+			n_cam, readyQueue, triggerStartEvent, stopEvent = args
+		else:
+			n_cam = args
+			readyQueue = None
+			triggerStartEvent = None
+			stopEvent = None
 
-	# Initialize param dictionary for this camera stream
-	cam_params = configurator.ConfigureCamParams(systems, params, n_cam)
+		# Initialize param dictionary for this camera stream
+		cam_params = configurator.ConfigureCamParams(systems, params, n_cam)
 
-	# Initialize queues for display, video writer, and stop messages
-	dispQueue = deque([], 2)
-	writeQueue = deque()
-	stopReadQueue = deque([],1)
-	stopWriteQueue = deque([],1)
+		# Initialize queues for display, video writer, and stop messages
+		dispQueue = deque([], 2)
+		writeQueue = deque()
+		stopReadQueue = deque([],1)
+		stopWriteQueue = deque([],1)
 
-	# Start image window display thread
-	if cam_params["displayFrameRate"] > 0:
+		# Start image window display thread
+		if cam_params["displayFrameRate"] > 0:
+			threading.Thread(
+				target = display.DisplayFrames,
+				daemon = True,
+				args = (cam_params, dispQueue,),
+				).start()
+
+		# Start grabbing frames ("producer" thread)
 		threading.Thread(
-			target = display.DisplayFrames,
+			target = unicam.GrabFrames,
 			daemon = True,
-			args = (cam_params, dispQueue,),
+			args = (cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue, triggerStartEvent, stopEvent,),
 			).start()
 
-	# Start grabbing frames ("producer" thread)
-	threading.Thread(
-		target = unicam.GrabFrames,
-		daemon = True,
-		args = (cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue, triggerStartEvent, stopEvent,),
-		).start()
-
-	# Start video file writer (main "consumer" process)
-	writer.WriteFrames(cam_params, writeQueue, stopReadQueue, stopWriteQueue)
+		# Start video file writer (main "consumer" process)
+		writer.WriteFrames(cam_params, writeQueue, stopReadQueue, stopWriteQueue)
+	except Exception as e:
+		raise RuntimeError(
+			"Camera worker failed: {}\n{}".format(e, traceback.format_exc())
+		)
 
 
 def TriggerControllerEnabled(params):
