@@ -54,9 +54,9 @@ BslMultipleROIRowSelector	Row1
 AcquisitionStopMode	AbortExposure
 ExposureTimeMode	Common
 ExposureTimeSelector	Common
-ExposureTime	2169.0
+ExposureTime	138.0
 ExposureTimeSelector	Common
-ExposureAuto	Once
+ExposureAuto	Off
 ExposureMode	Timed
 BslTransferBitDepthMode	Auto
 BslSensorBitDepthMode	Auto
@@ -175,7 +175,7 @@ GainSelector	All
 BlackLevelSelector	All
 BlackLevel	0.000
 BlackLevelSelector	All
-Gamma	1.0000
+Gamma	0.4976
 DigitalShift	0
 BslBrightness	0.000
 BslContrastMode	Linear

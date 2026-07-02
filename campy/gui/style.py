@@ -31,6 +31,12 @@ QLineEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox {
     selection-background-color: #406a95;
 }
 
+QLineEdit:disabled, QPlainTextEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled {
+    background: #202328;
+    color: #7d848e;
+    border: 1px solid #31363f;
+}
+
 QPushButton {
     background: #2f3338;
     color: #f4f7fb;
@@ -113,4 +119,3 @@ QFrame {
     border-radius: 4px;
 }
 """
-

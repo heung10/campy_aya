@@ -82,10 +82,66 @@ def camera_names(data):
     return clean[:count]
 
 
-def set_camera_names(data, names_text):
-    names = [part.strip() for part in str(names_text).split(",") if part.strip()]
-    if names:
-        data["cameraNames"] = names
+def list_values(data, key, count, default=""):
+    values = data.get(key)
+    if isinstance(values, list):
+        clean = [default if value is None else str(value) for value in values]
+    elif values in (None, ""):
+        clean = []
+    else:
+        clean = [str(values)]
+
+    while len(clean) < count:
+        clean.append(str(default))
+    return clean[:count]
+
+
+def camera_serials(data):
+    count = int(get_value(data, "numCams", 1) or 1)
+    return list_values(data, "cameraSerialNo", count, default="")
+
+
+def camera_settings_paths(data):
+    count = int(get_value(data, "numCams", 1) or 1)
+    return list_values(data, "cameraSettings", count, default="")
+
+
+def camera_gpu_ids(data):
+    count = int(get_value(data, "numCams", 1) or 1)
+    values = data.get("gpuID")
+    if isinstance(values, list):
+        clean = []
+        for value in values:
+            try:
+                clean.append(int(value))
+            except Exception:
+                clean.append(0)
+    elif values in (None, ""):
+        clean = []
+    else:
+        try:
+            clean = [int(values)]
+        except Exception:
+            clean = [0]
+
+    while len(clean) < count:
+        clean.append(0)
+    return clean[:count]
+
+
+def set_camera_names(data, names):
+    clean = [str(name).strip() for name in names if str(name).strip()]
+    if clean:
+        data["cameraNames"] = clean
+
+
+def set_camera_list(data, key, values, coerce=None):
+    clean = []
+    for value in values:
+        if coerce is not None:
+            value = coerce(value)
+        clean.append(value)
+    data[key] = clean
 
 
 def resolved_save_folder(data):
@@ -125,6 +181,11 @@ def validate_config(data):
     names = camera_names(data)
     if len(names) != num_cams:
         messages.append(("warning", "cameraNames will be padded/truncated to match numCams."))
+
+    for key in ["cameraSerialNo", "cameraSettings", "gpuID"]:
+        value = data.get(key)
+        if isinstance(value, list) and len(value) != num_cams:
+            messages.append(("warning", "{} will be padded/truncated to match numCams in the GUI.".format(key)))
 
     if not messages:
         messages.append(("ok", "Config looks ready for a first-pass GUI launch."))

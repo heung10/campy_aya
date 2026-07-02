@@ -1,4 +1,4 @@
-saveFolder: C:/Users/Cornell/Desktop/Basler/campy_test/RM018/20260630
+saveFolder: D:/RM018/RM018_day03_260702
 videoFilename: 0.mp4
 frameRate: 40
 recTimeInSec: 10000
@@ -27,7 +27,7 @@ codec: h264
 quality: 17
 ffmpegLogLevel: warning
 chunkLengthInSec: 5
-displayFrameRate: 15
+displayFrameRate: 20
 displayDownsample: 2
 startArduino: false
 startTriggerController: true
@@ -47,4 +47,4 @@ enableGPIOTimestampLogging: true
 gpioSerialPort: COM7
 gpioBaudRate: 119200
 gpioLogFilename: gpio_log.csv
-videoFolder: C:/Users/Cornell/Desktop/Basler/campy_test/RM018/20260630
+videoFolder: D:/RM018/RM018_day03_260702

@@ -26,11 +26,15 @@ from PyQt5.QtWidgets import (
 
 from .config_model import (
     CampyConfig,
+    camera_gpu_ids,
     camera_names,
+    camera_serials,
+    camera_settings_paths,
     get_value,
     load_config,
     messages_to_text,
     save_config,
+    set_camera_list,
     set_camera_names,
     set_if_present,
     validate_config,
@@ -60,6 +64,7 @@ class ConfigTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
+        self.camera_rows = []
 
         path_row = QHBoxLayout()
         self.config_path = QLineEdit()
@@ -78,6 +83,13 @@ class ConfigTab(QWidget):
         content.addWidget(self._recording_group(), 1)
         content.addWidget(self._hardware_group(), 1)
         layout.addLayout(content)
+
+        self.camera_group = QGroupBox("Cameras")
+        self.camera_layout = QGridLayout(self.camera_group)
+        self.camera_layout.setContentsMargins(8, 8, 8, 8)
+        self.camera_layout.setHorizontalSpacing(8)
+        self.camera_layout.setVerticalSpacing(6)
+        layout.addWidget(self.camera_group)
 
         save_row = QHBoxLayout()
         self.save_button = QPushButton("Save YAML")
@@ -118,26 +130,28 @@ class ConfigTab(QWidget):
 
         self.video_filename = QLineEdit()
         self.rec_time = self._double_spin(0.001, 10**7, 3, " s")
+        self.infinite_recording = QCheckBox("record until stopped")
         self.frame_rate = self._double_spin(0.001, 10000, 3, " Hz")
         self.num_cams = QSpinBox()
         self.num_cams.setRange(1, 6)
-        self.camera_names = QLineEdit()
         self.display_rate = self._double_spin(0, 120, 2, " Hz")
+        self.infinite_recording.stateChanged.connect(self._infinite_recording_changed)
+        self.num_cams.valueChanged.connect(self._num_cams_changed)
 
         form.addRow("saveFolder", folder_row)
         form.addRow("videoFilename", self.video_filename)
+        form.addRow("infinite recording", self.infinite_recording)
         form.addRow("recording time", self.rec_time)
         form.addRow("frame rate", self.frame_rate)
         form.addRow("num cameras", self.num_cams)
-        form.addRow("camera names", self.camera_names)
         form.addRow("preview rate", self.display_rate)
         self._connect_dirty_signals([
             self.save_folder,
             self.video_filename,
             self.rec_time,
+            self.infinite_recording,
             self.frame_rate,
             self.num_cams,
-            self.camera_names,
             self.display_rate,
         ])
         return group
@@ -248,12 +262,13 @@ class ConfigTab(QWidget):
     def _populate_fields(self):
         self._loading = True
         data = self.config.data
+        num_cams = int(get_value(data, "numCams", 1))
         self.save_folder.setText(str(get_value(data, "saveFolder", get_value(data, "videoFolder", ""))))
         self.video_filename.setText(str(get_value(data, "videoFilename", "0.mp4")))
         self.rec_time.setValue(float(get_value(data, "recTimeInSec", 10)))
+        self.infinite_recording.setChecked(bool(get_value(data, "infiniteRecording", False)))
         self.frame_rate.setValue(float(get_value(data, "frameRate", 40)))
-        self.num_cams.setValue(int(get_value(data, "numCams", 1)))
-        self.camera_names.setText(", ".join(camera_names(data)))
+        self.num_cams.setValue(num_cams)
         self.display_rate.setValue(float(get_value(data, "displayFrameRate", 0)))
         self.start_trigger.setChecked(bool(get_value(data, "startTriggerController", False)))
         self.wait_for_trigger.setChecked(bool(get_value(data, "waitForTriggerStart", False)))
@@ -262,6 +277,9 @@ class ConfigTab(QWidget):
         self.gpio_enabled.setChecked(bool(get_value(data, "enableGPIOTimestampLogging", False)))
         self.gpio_port.setText(str(get_value(data, "gpioSerialPort", "")))
         self.gpio_log_name.setText(str(get_value(data, "gpioLogFilename", "gpio_log.csv")))
+        self._rebuild_camera_rows(num_cams)
+        self._populate_camera_rows(data)
+        self._update_recording_time_enabled()
         self._loading = False
 
     def _collect_fields(self):
@@ -269,9 +287,13 @@ class ConfigTab(QWidget):
         set_if_present(data, "saveFolder", self.save_folder.text().strip())
         set_if_present(data, "videoFilename", self.video_filename.text().strip())
         set_if_present(data, "recTimeInSec", self._clean_number(self.rec_time.value()))
+        set_if_present(data, "infiniteRecording", bool(self.infinite_recording.isChecked()))
         set_if_present(data, "frameRate", self._clean_number(self.frame_rate.value()))
         set_if_present(data, "numCams", int(self.num_cams.value()))
-        set_camera_names(data, self.camera_names.text())
+        set_camera_names(data, [row["name"].text().strip() for row in self.camera_rows])
+        set_camera_list(data, "cameraSerialNo", [row["serial"].text().strip() for row in self.camera_rows])
+        set_camera_list(data, "cameraSettings", [row["settings"].text().strip() for row in self.camera_rows])
+        set_camera_list(data, "gpuID", [int(row["gpu"].value()) for row in self.camera_rows], coerce=int)
         set_if_present(data, "displayFrameRate", self._clean_number(self.display_rate.value()))
         set_if_present(data, "startTriggerController", bool(self.start_trigger.isChecked()))
         set_if_present(data, "waitForTriggerStart", bool(self.wait_for_trigger.isChecked()))
@@ -280,6 +302,7 @@ class ConfigTab(QWidget):
         set_if_present(data, "enableGPIOTimestampLogging", bool(self.gpio_enabled.isChecked()))
         set_if_present(data, "gpioSerialPort", self.gpio_port.text().strip())
         set_if_present(data, "gpioLogFilename", self.gpio_log_name.text().strip() or "gpio_log.csv")
+        set_if_present(data, "pulseTrainDurationSec", self._clean_number(self.rec_time.value()))
 
     def _clean_number(self, value):
         value = float(value)
@@ -300,6 +323,107 @@ class ConfigTab(QWidget):
         if self._loading:
             return
         self._set_dirty(True)
+
+    def _infinite_recording_changed(self):
+        self._update_recording_time_enabled()
+        self._field_changed()
+
+    def _update_recording_time_enabled(self):
+        self.rec_time.setEnabled(not self.infinite_recording.isChecked())
+
+    def _num_cams_changed(self, value):
+        self._rebuild_camera_rows(int(value))
+        self._field_changed()
+
+    def _rebuild_camera_rows(self, count):
+        snapshot = self._camera_row_values()
+        while self.camera_layout.count():
+            item = self.camera_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self.camera_rows = []
+        for index in range(int(count)):
+            row = self._create_camera_row(index)
+            self.camera_rows.append(row)
+            grid_row = index // 2
+            grid_col = index % 2
+            self.camera_layout.addWidget(row["group"], grid_row, grid_col)
+        self.camera_layout.setColumnStretch(0, 1)
+        self.camera_layout.setColumnStretch(1, 1)
+        self._apply_camera_row_values(snapshot)
+
+    def _create_camera_row(self, index):
+        group = QGroupBox("Camera {}".format(index + 1))
+        layout = QGridLayout(group)
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setHorizontalSpacing(6)
+        layout.setVerticalSpacing(4)
+
+        name = QLineEdit()
+        serial = QLineEdit()
+        settings = QLineEdit()
+        browse = QPushButton("...")
+        browse.setFixedWidth(34)
+        browse.clicked.connect(lambda _checked=False, field=settings: self._browse_camera_settings(field))
+        gpu = QSpinBox()
+        gpu.setRange(-1, 8)
+        gpu.setToolTip("-1 uses CPU encoding. 0 or higher selects a GPU index.")
+
+        layout.addWidget(QLabel("Name"), 0, 0)
+        layout.addWidget(name, 0, 1)
+        layout.addWidget(QLabel("GPU"), 0, 2)
+        layout.addWidget(gpu, 0, 3)
+        layout.addWidget(QLabel("Serial"), 1, 0)
+        layout.addWidget(serial, 1, 1, 1, 3)
+        layout.addWidget(QLabel("PFS"), 2, 0)
+        layout.addWidget(settings, 2, 1, 1, 2)
+        layout.addWidget(browse, 2, 3)
+
+        self._connect_dirty_signals([name, serial, settings, gpu])
+        return {
+            "group": group,
+            "name": name,
+            "serial": serial,
+            "settings": settings,
+            "gpu": gpu,
+        }
+
+    def _camera_row_values(self):
+        return [
+            {
+                "name": row["name"].text().strip(),
+                "serial": row["serial"].text().strip(),
+                "settings": row["settings"].text().strip(),
+                "gpu": int(row["gpu"].value()),
+            }
+            for row in self.camera_rows
+        ]
+
+    def _apply_camera_row_values(self, rows):
+        for index, row in enumerate(self.camera_rows):
+            row_data = rows[index] if index < len(rows) else {}
+            row["name"].setText(row_data.get("name", ""))
+            row["serial"].setText(row_data.get("serial", ""))
+            row["settings"].setText(row_data.get("settings", ""))
+            row["gpu"].setValue(int(row_data.get("gpu", 0)))
+
+    def _populate_camera_rows(self, data):
+        names = camera_names(data)
+        serials = camera_serials(data)
+        settings_paths = camera_settings_paths(data)
+        gpu_ids = camera_gpu_ids(data)
+        for index, row in enumerate(self.camera_rows):
+            row["name"].setText(names[index] if index < len(names) else "Camera{}".format(index + 1))
+            row["serial"].setText(serials[index] if index < len(serials) else "")
+            row["settings"].setText(settings_paths[index] if index < len(settings_paths) else "")
+            row["gpu"].setValue(gpu_ids[index] if index < len(gpu_ids) else 0)
+
+    def _browse_camera_settings(self, field):
+        start = str(Path(field.text()).expanduser().parent) if field.text().strip() else ""
+        path, _ = QFileDialog.getOpenFileName(self, "Select camera .pfs file", start, "PFS files (*.pfs);;All files (*)")
+        if path:
+            field.setText(path)
 
     def _set_dirty(self, dirty):
         self._dirty = bool(dirty)
