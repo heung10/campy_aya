@@ -61,7 +61,13 @@ def LoadSettings(cam_params, camera):
 	# Get camera information and save to cam_params for metadata
 	cam_params['frameWidth'] = camera.Width.GetValue()
 	cam_params['frameHeight'] = camera.Height.GetValue()
-	ConfigureExposure(camera, cam_params, silent=True)
+	if cam_params.get("overrideCameraExposureTime", False):
+		ConfigureExposure(camera, cam_params, silent=True)
+	else:
+		applied_exposure = ReadExposure(camera)
+		if applied_exposure is not None:
+			cam_params["appliedExposureTimeInUs"] = applied_exposure
+			cam_params["cameraExposureTimeInUs"] = applied_exposure
 	print(
 		"{} applied exposure time {:.1f} us.".format(
 			cam_params["cameraName"],
@@ -120,6 +126,7 @@ def ConfigureExposure(camera, cam_params, exposure_time_us=None, silent=False):
 	exposure_time_us = float(
 		cam_params["cameraExposureTimeInUs"] if exposure_time_us is None else exposure_time_us
 	)
+	ValidateExposureTime(cam_params, exposure_time_us)
 
 	try:
 		try:
@@ -151,6 +158,27 @@ def ConfigureExposure(camera, cam_params, exposure_time_us=None, silent=False):
 		)
 
 
+def ValidateExposureTime(cam_params, exposure_time_us):
+	frame_rate = float(cam_params.get("frameRate", 0) or 0)
+	if frame_rate <= 0:
+		return
+
+	frame_period_us = 1e6 / frame_rate
+	if float(exposure_time_us) >= frame_period_us:
+		raise RuntimeError(
+			"Requested exposure time {:.1f} us must be shorter than one frame period at {:.3f} Hz ({:.1f} us).".format(
+				float(exposure_time_us),
+				frame_rate,
+				frame_period_us,
+			)
+		)
+
+
+def ReadExposure(camera):
+	value = _get_float_feature(camera, ["ExposureTime", "ExposureTimeAbs"])
+	return float(value) if value is not None else None
+
+
 def _set_float_feature(camera, feature_names, value):
 	for feature_name in feature_names:
 		try:
@@ -174,6 +202,26 @@ def _set_float_feature(camera, feature_names, value):
 			applied = max(minimum, min(maximum, float(value)))
 			node.SetValue(applied)
 			return applied
+		except Exception:
+			pass
+	return None
+
+
+def _get_float_feature(camera, feature_names):
+	for feature_name in feature_names:
+		try:
+			node = getattr(camera, feature_name)
+			return float(node.GetValue())
+		except Exception:
+			pass
+
+	nodemap = camera.GetNodeMap()
+	for feature_name in feature_names:
+		try:
+			node = geni.CFloatPtr(nodemap.GetNode(feature_name))
+			if not geni.IsAvailable(node):
+				continue
+			return float(node.GetValue())
 		except Exception:
 			pass
 	return None

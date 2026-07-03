@@ -38,6 +38,7 @@ def DefaultParams():
 	params["bufferMode"] = "OldestFirst"
 	params["bufferSize"] = 100
 	params["cameraExposureTimeInUs"] = 1500
+	params["overrideCameraExposureTime"] = False
 	params["cameraGain"] = 1
 	params["disableGamma"] = True
 
@@ -357,6 +358,8 @@ def LoadConfig(config_path):
 
 def CombineConfigAndClargs(clargs):
 	params = LoadConfig(clargs.config)
+	if "overrideCameraExposureTime" not in params:
+		params["overrideCameraExposureTime"] = "cameraExposureTimeInUs" in params
 	params = CheckConfig(params, clargs)
 	for key, value in clargs.__dict__.items():
 		if value is not None:
@@ -490,6 +493,12 @@ def ParseClargs(parser):
 		dest="cameraExposureTimeInUs",
 		type=int, 
 		help="Exposure time (in microseconds) for each camera frame.",
+	)
+	parser.add_argument(
+		"--overrideCameraExposureTime",
+		dest="overrideCameraExposureTime",
+		type=bool,
+		help="If True, override the PFS exposure time with cameraExposureTimeInUs.",
 	)
 	parser.add_argument(
 		"--cameraGain", 

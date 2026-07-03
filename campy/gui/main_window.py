@@ -103,6 +103,7 @@ class MainWindow(QMainWindow):
 
     def _exposure_requested(self, camera_name, exposure_time_us):
         try:
+            self._validate_exposure_request(exposure_time_us)
             self.runner.apply_exposure_time(camera_name, exposure_time_us)
             self.statusBar().showMessage(
                 "Requested {} exposure {:.1f} us.".format(camera_name, exposure_time_us),
@@ -206,3 +207,17 @@ class MainWindow(QMainWindow):
         self.config_tab.config_path.setText(str(config_path))
         if self.config_tab.load_current_config():
             self.statusBar().showMessage("Restored last config: {}".format(config_path), 5000)
+
+    def _validate_exposure_request(self, exposure_time_us):
+        frame_rate = float(get_value(self.live_tab.config_data or {}, "frameRate", 0) or 0)
+        if frame_rate <= 0:
+            return
+        frame_period_us = 1e6 / frame_rate
+        if float(exposure_time_us) >= frame_period_us:
+            raise RuntimeError(
+                "Exposure time {:.1f} us must be shorter than one frame period at {:.3f} Hz ({:.1f} us).".format(
+                    float(exposure_time_us),
+                    frame_rate,
+                    frame_period_us,
+                )
+            )
