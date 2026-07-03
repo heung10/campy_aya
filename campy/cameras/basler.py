@@ -61,6 +61,14 @@ def LoadSettings(cam_params, camera):
 	# Get camera information and save to cam_params for metadata
 	cam_params['frameWidth'] = camera.Width.GetValue()
 	cam_params['frameHeight'] = camera.Height.GetValue()
+	ConfigureExposure(camera, cam_params, silent=True)
+	print(
+		"{} applied exposure time {:.1f} us.".format(
+			cam_params["cameraName"],
+			float(cam_params.get("appliedExposureTimeInUs", cam_params["cameraExposureTimeInUs"])),
+		),
+		flush=True,
+	)
 
 	ConfigureOutputLine(cam_params, camera)
 
@@ -106,6 +114,99 @@ def NormalizeLineName(line_value):
 			return "Line{}".format(line_value[4:])
 		return "Line{}".format(int(line_value))
 	return "Line{}".format(int(line_value))
+
+
+def ConfigureExposure(camera, cam_params, exposure_time_us=None, silent=False):
+	exposure_time_us = float(
+		cam_params["cameraExposureTimeInUs"] if exposure_time_us is None else exposure_time_us
+	)
+
+	try:
+		try:
+			camera.ExposureAuto.SetValue("Off")
+		except Exception:
+			pass
+
+		applied = _set_float_feature(camera, ["ExposureTime", "ExposureTimeAbs"], exposure_time_us)
+		if applied is None:
+			raise RuntimeError("ExposureTime feature is not writable on this camera.")
+
+		cam_params["cameraExposureTimeInUs"] = applied
+		cam_params["appliedExposureTimeInUs"] = applied
+		if not silent:
+			print(
+				"{} exposure time set to {:.1f} us.".format(
+					cam_params["cameraName"],
+					applied,
+				),
+				flush=True,
+			)
+		return cam_params
+	except Exception as e:
+		raise RuntimeError(
+			"Unable to set exposure time for {}: {}".format(
+				cam_params["cameraName"],
+				e,
+			)
+		)
+
+
+def _set_float_feature(camera, feature_names, value):
+	for feature_name in feature_names:
+		try:
+			node = getattr(camera, feature_name)
+			minimum = float(node.GetMin())
+			maximum = float(node.GetMax())
+			applied = max(minimum, min(maximum, float(value)))
+			node.SetValue(applied)
+			return applied
+		except Exception:
+			pass
+
+	nodemap = camera.GetNodeMap()
+	for feature_name in feature_names:
+		try:
+			node = geni.CFloatPtr(nodemap.GetNode(feature_name))
+			if not geni.IsAvailable(node) or not geni.IsWritable(node):
+				continue
+			minimum = float(node.GetMin())
+			maximum = float(node.GetMax())
+			applied = max(minimum, min(maximum, float(value)))
+			node.SetValue(applied)
+			return applied
+		except Exception:
+			pass
+	return None
+
+
+def ApplyRuntimeControls(camera, cam_params, control):
+	if not isinstance(control, dict):
+		return cam_params
+
+	requested = None
+	camera_controls = control.get("cameras")
+	if isinstance(camera_controls, dict):
+		camera_control = camera_controls.get(cam_params["cameraName"])
+		if isinstance(camera_control, dict):
+			try:
+				requested = float(camera_control["cameraExposureTimeInUs"])
+			except Exception:
+				requested = None
+
+	if requested is None and "cameraExposureTimeInUs" in control:
+		try:
+			requested = float(control["cameraExposureTimeInUs"])
+		except Exception:
+			requested = None
+
+	if requested is None:
+		return cam_params
+
+	current = float(cam_params.get("appliedExposureTimeInUs", cam_params.get("cameraExposureTimeInUs", requested)))
+	if abs(requested - current) < 0.5:
+		return cam_params
+
+	return ConfigureExposure(camera, cam_params, exposure_time_us=requested)
 
 
 def StartGrabbing(camera):

@@ -10,6 +10,8 @@ from datetime import datetime
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
     QAbstractItemView,
+    QDoubleSpinBox,
+    QGridLayout,
     QGroupBox,
     QHeaderView,
     QHBoxLayout,
@@ -22,6 +24,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from .config_model import camera_names
 from .status import collect_status
 
 
@@ -31,12 +34,16 @@ CAMERA_PROGRESS_RE = re.compile(
 GPIO_PROGRESS_RE = re.compile(
     r"^\[GUI\] GPIO events received: (?:(?P<total>\d+) total, )?(?P<count>\d+) recent lines hidden"
 )
+CAMERA_EXPOSURE_RE = re.compile(
+    r"^(?P<device>.+?) applied exposure time (?P<exposure>[0-9.]+) us\.$"
+)
 
 
 class LiveTab(QWidget):
     readyRequested = pyqtSignal()
     startRequested = pyqtSignal()
     stopRequested = pyqtSignal()
+    exposureRequested = pyqtSignal(str, float)
 
     def __init__(self, parent=None):
         super(LiveTab, self).__init__(parent)
@@ -45,8 +52,11 @@ class LiveTab(QWidget):
         self.process_state = "idle"
         self.recording_phase = "idle"
         self.ready_to_start = False
+        self.session_complete = False
         self.runtime_rows = {}
+        self.preflight_rows = {}
         self.gpio_runtime_count = 0
+        self.exposure_rows = []
         self._build_ui()
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self.refresh_status)
@@ -55,23 +65,45 @@ class LiveTab(QWidget):
     def set_config(self, data, path):
         self.config_data = data or {}
         self.config_path = path or ""
+        self.preflight_rows = {}
+        self._rebuild_exposure_controls()
+        self.refresh_status()
+
+    def set_preflight_results(self, results):
+        self.preflight_rows = {}
+        for device, result in (results or {}).items():
+            self.preflight_rows[device] = {
+                "state": result.get("state", "Idle"),
+                "count": "-",
+                "rate": "-",
+                "last_update": datetime.now().strftime("%H:%M:%S"),
+                "notes": result.get("message", ""),
+            }
+
+        self.ready_to_start = bool(
+            self.preflight_rows
+            and all(row["state"] in ["Ready", "Disabled"] for row in self.preflight_rows.values())
+        )
         self.refresh_status()
 
     def set_process_state(self, state):
         self.process_state = state or "idle"
         if self.process_state == "idle":
-            self.ready_to_start = False
-            self.recording_phase = "idle"
-            self.runtime_rows = {}
-            self.gpio_runtime_count = 0
+            if not self.session_complete:
+                self.ready_to_start = False
+                self.recording_phase = "idle"
+                self.runtime_rows = {}
+                self.preflight_rows = {}
+                self.gpio_runtime_count = 0
         elif self.process_state == "stopping":
             self.recording_phase = "stopping"
         elif self.process_state == "running" and self.recording_phase == "idle":
             self.recording_phase = "preparing"
         self.process_state_label.setText("Process: {}".format(self.process_state))
-        self.ready_button.setEnabled(self.process_state == "idle")
+        self.ready_button.setEnabled(self.process_state == "idle" and not self.session_complete)
         self.start_button.setEnabled(self.process_state == "running" and self.ready_to_start)
         self.stop_button.setEnabled(self.process_state in ["running", "stopping"])
+        self._update_exposure_buttons()
         self.refresh_status()
 
     def set_ready_to_start(self, ready):
@@ -79,18 +111,31 @@ class LiveTab(QWidget):
         if ready:
             self.recording_phase = "ready"
         self.start_button.setEnabled(self.process_state == "running" and self.ready_to_start)
+        self._update_exposure_buttons()
         if ready:
             self.process_state_label.setText("Process: ready")
         self.refresh_status()
 
     def set_recording_started(self):
         self.recording_phase = "recording"
+        self.session_complete = False
         self.runtime_rows = {}
         self.gpio_runtime_count = 0
         self.ready_to_start = False
         self.start_button.setEnabled(False)
+        self._update_exposure_buttons()
         self.process_state_label.setText("Process: recording")
         self.refresh_status()
+
+    def set_session_complete(self):
+        self.session_complete = True
+        self.ready_to_start = False
+        self.recording_phase = "finished"
+        self.ready_button.setEnabled(False)
+        self.start_button.setEnabled(False)
+        self.stop_button.setEnabled(False)
+        self._update_exposure_buttons()
+        self.process_state_label.setText("Process: finished")
 
     def append_log(self, line):
         if not line:
@@ -110,6 +155,14 @@ class LiveTab(QWidget):
         self._populate_table(rows)
 
     def update_runtime_from_line(self, line):
+        exposure_match = CAMERA_EXPOSURE_RE.match(line)
+        if exposure_match:
+            self.set_camera_exposure_value(
+                exposure_match.group("device").strip(),
+                float(exposure_match.group("exposure")),
+            )
+            return
+
         camera_match = CAMERA_PROGRESS_RE.match(line)
         if camera_match:
             device = camera_match.group("device").strip()
@@ -142,6 +195,18 @@ class LiveTab(QWidget):
             self.refresh_status()
 
     def _apply_runtime_rows(self, rows):
+        if self.recording_phase not in ["recording", "stopping"]:
+            for row in rows:
+                preflight = self.preflight_rows.get(row.device)
+                if preflight is None:
+                    continue
+                row.state = preflight["state"]
+                row.count = preflight["count"]
+                row.rate = preflight["rate"]
+                row.last_update = preflight["last_update"]
+                row.notes = preflight["notes"]
+            return rows
+
         if self.recording_phase not in ["recording", "stopping"]:
             return rows
         for row in rows:
@@ -178,6 +243,13 @@ class LiveTab(QWidget):
         controls.addStretch(1)
         controls.addWidget(self.process_state_label)
         layout.addLayout(controls)
+
+        exposure_group = QGroupBox("Exposure")
+        self.exposure_layout = QGridLayout(exposure_group)
+        self.exposure_layout.setContentsMargins(8, 8, 8, 8)
+        self.exposure_layout.setHorizontalSpacing(8)
+        self.exposure_layout.setVerticalSpacing(6)
+        layout.addWidget(exposure_group, 0)
 
         status_group = QGroupBox("Status")
         status_layout = QVBoxLayout(status_group)
@@ -232,3 +304,62 @@ class LiveTab(QWidget):
             item.setBackground(Qt.darkGray)
         else:
             item.setBackground(Qt.darkRed)
+
+    def _rebuild_exposure_controls(self):
+        while self.exposure_layout.count():
+            item = self.exposure_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        self.exposure_rows = []
+        if not self.config_data:
+            self.exposure_layout.addWidget(QLabel("Load a config to enable per-camera exposure control."), 0, 0)
+            return
+
+        default_exposure = float(self.config_data.get("cameraExposureTimeInUs", 1500) or 1500)
+        names = camera_names(self.config_data)
+        for index, camera_name in enumerate(names[:6]):
+            label = QLabel(camera_name)
+            spin = QDoubleSpinBox()
+            spin.setRange(10.0, 1000000.0)
+            spin.setDecimals(1)
+            spin.setSuffix(" us")
+            spin.setSingleStep(100.0)
+            spin.setValue(default_exposure)
+            button = QPushButton("Apply")
+            button.setEnabled(False)
+            button.clicked.connect(
+                lambda _checked=False, name=camera_name, field=spin: self._request_exposure_change(name, field)
+            )
+            grid_row = index // 2
+            col_offset = (index % 2) * 3
+            self.exposure_layout.addWidget(label, grid_row, col_offset)
+            self.exposure_layout.addWidget(spin, grid_row, col_offset + 1)
+            self.exposure_layout.addWidget(button, grid_row, col_offset + 2)
+            self.exposure_rows.append({
+                "camera_name": camera_name,
+                "spin": spin,
+                "button": button,
+            })
+
+        self.exposure_layout.setColumnStretch(1, 1)
+        self.exposure_layout.setColumnStretch(4, 1)
+        self._update_exposure_buttons()
+
+    def _update_exposure_buttons(self):
+        enabled = self.process_state == "running" and self.recording_phase == "recording"
+        for row in self.exposure_rows:
+            row["button"].setEnabled(enabled)
+
+    def set_camera_exposure_value(self, camera_name, exposure_time_us):
+        for row in self.exposure_rows:
+            if row["camera_name"] != camera_name:
+                continue
+            row["spin"].blockSignals(True)
+            row["spin"].setValue(float(exposure_time_us))
+            row["spin"].blockSignals(False)
+            break
+
+    def _request_exposure_change(self, camera_name, field):
+        self.exposureRequested.emit(str(camera_name), float(field.value()))

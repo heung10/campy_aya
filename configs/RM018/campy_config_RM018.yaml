@@ -1,5 +1,5 @@
-saveFolder: D:/RM018/RM018_day03_260702
-videoFilename: 0.mp4
+saveFolder: D:/gui_test
+videoFilename: 123.mp4
 frameRate: 40
 recTimeInSec: 10000
 infiniteRecording: true
@@ -34,17 +34,17 @@ startTriggerController: true
 triggerController: pulsepal
 waitForTriggerStart: true
 pulsePalPythonPath: auto
-pulsePalPort: COM3
+pulsePalPort: COM16
 pulsePalChannels: [1, 2]
 pulseFrequencyHz: 40
 pulseHighTimeSec: 0.005
-pulseTrainDurationSec: 1800
+pulseTrainDurationSec: 10000
 pulsePalContinuous: true
 pulsePalVoltage: 5
 pulsePalRestingVoltage: 0
 pulsePalTriggerChannel: 1
-enableGPIOTimestampLogging: true
-gpioSerialPort: COM7
+enableGPIOTimestampLogging: false
+gpioSerialPort: COM5
 gpioBaudRate: 119200
 gpioLogFilename: gpio_log.csv
-videoFolder: D:/RM018/RM018_day03_260702
+videoFolder: D:/gui_test

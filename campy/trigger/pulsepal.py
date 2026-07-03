@@ -55,6 +55,18 @@ def _trigger_outputs(pp, channels):
 		pp.triggerOutputChannels(channels)
 
 
+def CheckConnection(params):
+	PulsePalObject = _load_pulsepal(params)
+	pp = PulsePalObject(params["pulsePalPort"])
+	try:
+		return True, "connected to {}".format(params["pulsePalPort"])
+	finally:
+		try:
+			pp.disconnect()
+		except Exception:
+			pass
+
+
 def StartTriggers(systems, params):
 	PulsePalObject = _load_pulsepal(params)
 	pp = PulsePalObject(params["pulsePalPort"])

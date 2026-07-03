@@ -4,6 +4,7 @@ reduce redundancy in campy code.
 """
 
 import os, sys, time, csv, logging
+from pathlib import Path
 from datetime import datetime
 import numpy as np
 from collections import deque
@@ -230,6 +231,57 @@ def SaveGuiPreviewFrame(cam_params, img):
 			logging.error('Caught exception at cameras/unicam.py SaveGuiPreviewFrame: {}'.format(e))
 
 
+def LoadRuntimeCameraControl(cam_params):
+	control_path = cam_params.get("guiCameraControlFile", "None")
+	if control_path in [None, "None", ""]:
+		return None
+
+	try:
+		path = Path(control_path)
+		if not path.exists():
+			return None
+		mtime = path.stat().st_mtime
+		if mtime <= float(cam_params.get("_runtimeControlMTime", 0)):
+			return None
+		with path.open("r", encoding="utf-8") as handle:
+			content = handle.read().strip()
+		cam_params["_runtimeControlMTime"] = mtime
+		if not content:
+			return None
+		if sio is not None:
+			pass
+	except Exception as e:
+		if cam_params.get("cameraDebug", False):
+			logging.error('Caught exception at cameras/unicam.py LoadRuntimeCameraControl: {}'.format(e))
+		return None
+
+	try:
+		import yaml
+		data = yaml.safe_load(content) or {}
+		return data if isinstance(data, dict) else None
+	except Exception as e:
+		if cam_params.get("cameraDebug", False):
+			logging.error('Caught exception at cameras/unicam.py ParseRuntimeCameraControl: {}'.format(e))
+		return None
+
+
+def ApplyRuntimeCameraControl(cam, camera, cam_params, frameNumber):
+	if frameNumber <= 0 or frameNumber % 5 != 0:
+		return cam_params
+
+	control = LoadRuntimeCameraControl(cam_params)
+	if control is None:
+		return cam_params
+
+	try:
+		if hasattr(cam, "ApplyRuntimeControls"):
+			return cam.ApplyRuntimeControls(camera, cam_params, control)
+	except Exception as e:
+		if cam_params.get("cameraDebug", False):
+			logging.error('Caught exception at cameras/unicam.py ApplyRuntimeCameraControl: {}'.format(e))
+	return cam_params
+
+
 def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue=None, triggerStartEvent=None, stopEvent=None):
 	# Open the camera object
 	cam, camera, cam_params = OpenCamera(cam_params, stopWriteQueue)
@@ -293,6 +345,7 @@ def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue,
 			if grabdata["frameID"] and frameID != grabdata["frameID"][-1] + 1:
 				grabdata["frameIdGapCount"] += 1
 			grabdata["frameID"].append(frameID)
+			cam_params = ApplyRuntimeCameraControl(cam, camera, cam_params, frameNumber)
 
 			# Display/save converted, downsampled previews without touching the
 			# recording queue. GUI preview files are latest-frame-only.

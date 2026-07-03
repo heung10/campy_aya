@@ -171,6 +171,12 @@ def validate_config(data):
         except Exception:
             messages.append(("error", "{} must be numeric.".format(key)))
 
+    try:
+        if float(get_value(data, "gpioDuplicateThresholdMs", 1.0)) < 0:
+            messages.append(("error", "gpioDuplicateThresholdMs must be non-negative."))
+    except Exception:
+        messages.append(("error", "gpioDuplicateThresholdMs must be numeric."))
+
     if get_value(data, "enableGPIOTimestampLogging", False) and not data.get("gpioSerialPort"):
         messages.append(("error", "GPIO logging is enabled, but gpioSerialPort is empty."))
 

@@ -60,6 +60,7 @@ def DefaultParams():
 	params["guiPreviewFrameRate"] = 5
 	params["guiPreviewFolder"] = "None"
 	params["guiStopFile"] = "None"
+	params["guiCameraControlFile"] = "None"
 
 	# Trigger parameters
 	params["triggerController"] = "arduino"
@@ -614,6 +615,11 @@ def ParseClargs(parser):
 		"--guiStopFile",
 		dest="guiStopFile",
 		help="File path used by the GUI to request graceful acquisition stop.",
+	)
+	parser.add_argument(
+		"--guiCameraControlFile",
+		dest="guiCameraControlFile",
+		help="File path used by the GUI to send runtime camera control updates.",
 	)
 
 	# Microcontroller triggering arguments

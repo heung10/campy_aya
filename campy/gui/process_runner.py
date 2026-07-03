@@ -17,12 +17,15 @@ from PyQt5.QtCore import QObject, pyqtSignal
 import yaml
 
 from .config_model import PROJECT_ROOT
+from campy.gpio import logger as gpio_logger
+from campy.trigger import pulsepal as pulsepal_trigger
 
 
 class AcquisitionRunner(QObject):
     outputLine = pyqtSignal(str)
     stateChanged = pyqtSignal(str)
     finished = pyqtSignal(int)
+    preflightChecked = pyqtSignal(dict)
 
     def __init__(self, parent=None):
         super(AcquisitionRunner, self).__init__(parent)
@@ -32,6 +35,7 @@ class AcquisitionRunner(QObject):
         self._runtime_config_path = None
         self.preview_folder = None
         self._stop_file_path = None
+        self._camera_control_file_path = None
         self._suppressed_gpio_lines = 0
         self._total_gpio_lines = 0
         self._last_gpio_summary = 0.0
@@ -44,6 +48,13 @@ class AcquisitionRunner(QObject):
     def prepare(self, config_path):
         if self.is_running():
             raise RuntimeError("Acquisition is already running.")
+
+        config_data = self._load_config_data(config_path)
+        preflight = self._run_preflight_checks(config_data)
+        self.preflightChecked.emit(preflight)
+        failures = [result for result in preflight.values() if not result.get("ok", False)]
+        if failures:
+            raise RuntimeError("; ".join(result["message"] for result in failures))
 
         config_path = self._make_runtime_config(config_path)
         if getattr(sys, "frozen", False):
@@ -97,6 +108,36 @@ class AcquisitionRunner(QObject):
         timer = threading.Timer(20.0, self._interrupt_if_running)
         timer.daemon = True
         timer.start()
+
+    def apply_exposure_time(self, camera_name, exposure_time_us):
+        if not self.is_running() or not self._camera_control_file_path:
+            raise RuntimeError("Acquisition is not running.")
+
+        payload = {}
+        control_path = Path(self._camera_control_file_path)
+        if control_path.exists():
+            try:
+                with control_path.open("r", encoding="utf-8") as handle:
+                    payload = yaml.safe_load(handle) or {}
+                if not isinstance(payload, dict):
+                    payload = {}
+            except Exception:
+                payload = {}
+
+        cameras = payload.get("cameras")
+        if not isinstance(cameras, dict):
+            cameras = {}
+        cameras[str(camera_name)] = {
+            "cameraExposureTimeInUs": float(exposure_time_us),
+        }
+        payload["cameras"] = cameras
+        payload["updatedAtEpochSec"] = time.time()
+
+        with open(self._camera_control_file_path, "w", encoding="utf-8") as handle:
+            yaml.safe_dump(payload, handle, sort_keys=False, default_flow_style=False)
+        self.outputLine.emit(
+            "[GUI] Requested {} exposure time {:.1f} us.".format(str(camera_name), float(exposure_time_us))
+        )
 
     def _interrupt_if_running(self):
         if not self.is_running():
@@ -160,13 +201,51 @@ class AcquisitionRunner(QObject):
         self.state = state
         self.stateChanged.emit(state)
 
-    def _make_runtime_config(self, config_path):
+    def _load_config_data(self, config_path):
         source_path = Path(config_path).expanduser().resolve()
         with source_path.open("r", encoding="utf-8") as handle:
             data = yaml.safe_load(handle) or {}
-
         if not isinstance(data, dict):
             raise ValueError("Config file must contain a YAML mapping.")
+        return data
+
+    def _run_preflight_checks(self, data):
+        results = {}
+
+        trigger_enabled = bool(data.get("startTriggerController", False))
+        trigger_controller = str(data.get("triggerController", "")).lower()
+        if trigger_enabled and trigger_controller == "pulsepal":
+            try:
+                ok, message = pulsepal_trigger.CheckConnection(data)
+                results["Trigger"] = {"ok": bool(ok), "state": "Ready" if ok else "Disconnected", "message": message}
+                self.outputLine.emit("[GUI] PulsePal preflight: {}.".format(message))
+            except Exception as exc:
+                message = "PulsePal port {} unavailable: {}".format(data.get("pulsePalPort", "-"), exc)
+                results["Trigger"] = {"ok": False, "state": "Disconnected", "message": message}
+                self.outputLine.emit("[GUI] PulsePal preflight failed: {}".format(message))
+        elif trigger_enabled:
+            message = "trigger controller {} not preflight-checked".format(data.get("triggerController", "-"))
+            results["Trigger"] = {"ok": True, "state": "Ready", "message": message}
+            self.outputLine.emit("[GUI] Trigger preflight skipped: {}.".format(message))
+        else:
+            results["Trigger"] = {"ok": True, "state": "Disabled", "message": "trigger disabled"}
+
+        if bool(data.get("enableGPIOTimestampLogging", False)):
+            try:
+                ok, message = gpio_logger.CheckConnection(data)
+                results["GPIO"] = {"ok": bool(ok), "state": "Ready" if ok else "Disconnected", "message": message}
+                self.outputLine.emit("[GUI] GPIO preflight: {}.".format(message))
+            except Exception as exc:
+                message = "GPIO port {} unavailable: {}".format(data.get("gpioSerialPort", "-"), exc)
+                results["GPIO"] = {"ok": False, "state": "Disconnected", "message": message}
+                self.outputLine.emit("[GUI] GPIO preflight failed: {}".format(message))
+        else:
+            results["GPIO"] = {"ok": True, "state": "Disabled", "message": "GPIO logging disabled"}
+
+        return results
+
+    def _make_runtime_config(self, config_path):
+        data = self._load_config_data(config_path)
 
         # GUI owns display inside the main window. Disable legacy matplotlib
         # preview windows for GUI-launched acquisitions.
@@ -191,6 +270,17 @@ class AcquisitionRunner(QObject):
         except Exception:
             pass
         data["guiStopFile"] = self._stop_file_path
+        control_handle = tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".yaml",
+            prefix="campy_gui_camera_control_",
+            delete=False,
+            encoding="utf-8",
+        )
+        with control_handle:
+            control_handle.write("")
+        self._camera_control_file_path = control_handle.name
+        data["guiCameraControlFile"] = self._camera_control_file_path
 
         handle = tempfile.NamedTemporaryFile(
             mode="w",
@@ -221,6 +311,12 @@ class AcquisitionRunner(QObject):
             except Exception:
                 pass
         self._stop_file_path = None
+        if self._camera_control_file_path:
+            try:
+                Path(self._camera_control_file_path).unlink()
+            except Exception:
+                pass
+        self._camera_control_file_path = None
 
     def _is_noisy_gpio_line(self, line):
         return line.startswith("Received GPIO signal") or line.startswith("Received Signal:")

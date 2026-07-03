@@ -24,6 +24,8 @@ def main(argv=None):
         return Main()
 
     app = QApplication.instance() or QApplication(sys.argv[:1] + args)
+    app.setOrganizationName("campy")
+    app.setApplicationName("campy-gui")
     initial_config = args[0] if args else None
     window = MainWindow(initial_config=initial_config)
     window.show()

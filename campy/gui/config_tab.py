@@ -71,12 +71,9 @@ class ConfigTab(QWidget):
         self.config_path.setPlaceholderText("Select a campy .yaml config")
         browse = QPushButton("Browse")
         browse.clicked.connect(self._browse_config)
-        load = QPushButton("Load")
-        load.clicked.connect(self._load_clicked)
         path_row.addWidget(QLabel("Config"))
         path_row.addWidget(self.config_path, 1)
         path_row.addWidget(browse)
-        path_row.addWidget(load)
         layout.addLayout(path_row)
 
         content = QHBoxLayout()
@@ -208,6 +205,7 @@ class ConfigTab(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, "Select campy config", start, "YAML files (*.yaml *.yml)")
         if path:
             self.config_path.setText(path)
+            self.load_current_config()
 
     def _browse_save_folder(self):
         start = self.save_folder.text() or ""
@@ -216,9 +214,12 @@ class ConfigTab(QWidget):
             self.save_folder.setText(path)
 
     def _load_clicked(self):
+        self.load_current_config()
+
+    def load_current_config(self):
         if not self.config_path.text().strip():
             self.validation_text.setPlainText("Choose a config file first.")
-            return
+            return False
         try:
             self.config = load_config(self.config_path.text().strip())
             self.config_path.setText(str(self.config.path))
@@ -226,21 +227,28 @@ class ConfigTab(QWidget):
             self._set_dirty(False)
             self._validate_fields()
             self.configLoaded.emit(self.config.data, str(self.config.path))
+            return True
         except Exception as exc:
             self.validation_text.setPlainText("Could not load config:\n{}".format(exc))
+            return False
 
     def _save_clicked(self):
+        self.save_current_config()
+
+    def save_current_config(self):
         if not self.config.loaded:
             self.validation_text.setPlainText("Load a config before saving.")
-            return
+            return False
         self._collect_fields()
         try:
             path = save_config(self.config)
             self._set_dirty(False)
             self._validate_fields()
             self.configSaved.emit(self.config.data, str(path))
+            return True
         except Exception as exc:
             self.validation_text.setPlainText("Could not save config:\n{}".format(exc))
+            return False
 
     def _save_as_clicked(self):
         if not self.config.data:
