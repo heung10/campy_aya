@@ -182,9 +182,6 @@ class MainWindow(QMainWindow):
                 result.get("threshold_ms", threshold_ms),
             )
         )
-        raw_backup = result.get("raw_backup")
-        if raw_backup:
-            self.live_tab.append_log("[GUI] Raw GPIO backup saved to {}.".format(raw_backup))
 
     def _settings(self):
         return QSettings()

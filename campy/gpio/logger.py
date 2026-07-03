@@ -59,15 +59,11 @@ def _filter_duplicate_rows(rows, min_interval_ms):
 
 def CleanLoggedFile(params, min_interval_ms=1.0):
 	if not _gpio_enabled(params):
-		return {"cleaned": False, "removed": 0, "kept": 0, "raw_backup": None, "log_path": None}
+		return {"cleaned": False, "removed": 0, "kept": 0, "log_path": None}
 
 	log_path = Path(_log_path(params))
 	if not log_path.exists():
-		return {"cleaned": False, "removed": 0, "kept": 0, "raw_backup": None, "log_path": str(log_path)}
-
-	raw_backup = log_path.with_name(log_path.stem + "_raw" + log_path.suffix)
-	if not raw_backup.exists():
-		raw_backup.write_bytes(log_path.read_bytes())
+		return {"cleaned": False, "removed": 0, "kept": 0, "log_path": str(log_path)}
 
 	fieldnames, rows = _read_gpio_rows(str(log_path))
 	filtered_rows, rejected_rows = _filter_duplicate_rows(rows, min_interval_ms)
@@ -81,7 +77,6 @@ def CleanLoggedFile(params, min_interval_ms=1.0):
 		"cleaned": True,
 		"removed": len(rejected_rows),
 		"kept": len(filtered_rows),
-		"raw_backup": str(raw_backup),
 		"log_path": str(log_path),
 		"threshold_ms": float(min_interval_ms),
 	}
