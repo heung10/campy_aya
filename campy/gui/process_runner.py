@@ -11,12 +11,13 @@ import sys
 import tempfile
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 
 from PyQt5.QtCore import QObject, pyqtSignal
 import yaml
 
-from .config_model import PROJECT_ROOT
+from .config_model import PROJECT_ROOT, auto_camera_video_filenames
 from campy.gpio import logger as gpio_logger
 from campy.trigger import pulsepal as pulsepal_trigger
 
@@ -45,7 +46,7 @@ class AcquisitionRunner(QObject):
     def is_running(self):
         return self._process is not None and self._process.poll() is None
 
-    def prepare(self, config_path):
+    def prepare(self, config_path, prepared_at=None):
         if self.is_running():
             raise RuntimeError("Acquisition is already running.")
 
@@ -56,7 +57,7 @@ class AcquisitionRunner(QObject):
         if failures:
             raise RuntimeError("; ".join(result["message"] for result in failures))
 
-        config_path = self._make_runtime_config(config_path)
+        config_path = self._make_runtime_config(config_path, prepared_at=prepared_at)
         if getattr(sys, "frozen", False):
             self.last_command = [sys.executable, "--acquire", config_path]
         else:
@@ -244,8 +245,13 @@ class AcquisitionRunner(QObject):
 
         return results
 
-    def _make_runtime_config(self, config_path):
+    def _make_runtime_config(self, config_path, prepared_at=None):
         data = self._load_config_data(config_path)
+        prepared_at = prepared_at or datetime.now()
+        data["videoFilename"] = auto_camera_video_filenames(data, now=prepared_at)
+        self.outputLine.emit(
+            "[GUI] Prepared output filenames: {}.".format(", ".join(data["videoFilename"]))
+        )
 
         # GUI owns display inside the main window. Disable legacy matplotlib
         # preview windows for GUI-launched acquisitions.

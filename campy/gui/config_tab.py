@@ -26,6 +26,7 @@ from PyQt5.QtWidgets import (
 
 from .config_model import (
     CampyConfig,
+    camera_selection,
     camera_gpu_ids,
     camera_names,
     camera_serials,
@@ -125,7 +126,6 @@ class ConfigTab(QWidget):
         browse_folder.clicked.connect(self._browse_save_folder)
         folder_row.addWidget(browse_folder)
 
-        self.video_filename = QLineEdit()
         self.rec_time = self._double_spin(0.001, 10**7, 3, " s")
         self.infinite_recording = QCheckBox("record until stopped")
         self.frame_rate = self._double_spin(0.001, 10000, 3, " Hz")
@@ -136,7 +136,6 @@ class ConfigTab(QWidget):
         self.num_cams.valueChanged.connect(self._num_cams_changed)
 
         form.addRow("saveFolder", folder_row)
-        form.addRow("videoFilename", self.video_filename)
         form.addRow("infinite recording", self.infinite_recording)
         form.addRow("recording time", self.rec_time)
         form.addRow("frame rate", self.frame_rate)
@@ -144,7 +143,6 @@ class ConfigTab(QWidget):
         form.addRow("preview rate", self.display_rate)
         self._connect_dirty_signals([
             self.save_folder,
-            self.video_filename,
             self.rec_time,
             self.infinite_recording,
             self.frame_rate,
@@ -161,6 +159,7 @@ class ConfigTab(QWidget):
         self.wait_for_trigger = QCheckBox("wait for camera-ready start")
         self.pulse_hz = self._double_spin(0.001, 10000, 3, " Hz")
         self.pulse_port = QLineEdit()
+        self.pulse_channels = QLineEdit()
         self.gpio_enabled = QCheckBox("enable GPIO timestamp logging")
         self.gpio_port = QLineEdit()
         self.gpio_log_name = QLineEdit()
@@ -169,6 +168,7 @@ class ConfigTab(QWidget):
         form.addRow("manual start", self.wait_for_trigger)
         form.addRow("pulse frequency", self.pulse_hz)
         form.addRow("PulsePal port", self.pulse_port)
+        form.addRow("PulsePal channels", self.pulse_channels)
         form.addRow("GPIO enabled", self.gpio_enabled)
         form.addRow("GPIO port", self.gpio_port)
         form.addRow("GPIO log file", self.gpio_log_name)
@@ -177,6 +177,7 @@ class ConfigTab(QWidget):
             self.wait_for_trigger,
             self.pulse_hz,
             self.pulse_port,
+            self.pulse_channels,
             self.gpio_enabled,
             self.gpio_port,
             self.gpio_log_name,
@@ -272,7 +273,6 @@ class ConfigTab(QWidget):
         data = self.config.data
         num_cams = int(get_value(data, "numCams", 1))
         self.save_folder.setText(str(get_value(data, "saveFolder", get_value(data, "videoFolder", ""))))
-        self.video_filename.setText(str(get_value(data, "videoFilename", "0.mp4")))
         self.rec_time.setValue(float(get_value(data, "recTimeInSec", 10)))
         self.infinite_recording.setChecked(bool(get_value(data, "infiniteRecording", False)))
         self.frame_rate.setValue(float(get_value(data, "frameRate", 40)))
@@ -282,6 +282,7 @@ class ConfigTab(QWidget):
         self.wait_for_trigger.setChecked(bool(get_value(data, "waitForTriggerStart", False)))
         self.pulse_hz.setValue(float(get_value(data, "pulseFrequencyHz", get_value(data, "frameRate", 40))))
         self.pulse_port.setText(str(get_value(data, "pulsePalPort", "")))
+        self.pulse_channels.setText(self._format_int_list(get_value(data, "pulsePalChannels", [1, 2])))
         self.gpio_enabled.setChecked(bool(get_value(data, "enableGPIOTimestampLogging", False)))
         self.gpio_port.setText(str(get_value(data, "gpioSerialPort", "")))
         self.gpio_log_name.setText(str(get_value(data, "gpioLogFilename", "gpio_log.csv")))
@@ -293,11 +294,11 @@ class ConfigTab(QWidget):
     def _collect_fields(self):
         data = self.config.data
         set_if_present(data, "saveFolder", self.save_folder.text().strip())
-        set_if_present(data, "videoFilename", self.video_filename.text().strip())
         set_if_present(data, "recTimeInSec", self._clean_number(self.rec_time.value()))
         set_if_present(data, "infiniteRecording", bool(self.infinite_recording.isChecked()))
         set_if_present(data, "frameRate", self._clean_number(self.frame_rate.value()))
         set_if_present(data, "numCams", int(self.num_cams.value()))
+        set_if_present(data, "cameraSelection", list(range(int(self.num_cams.value()))))
         set_camera_names(data, [row["name"].text().strip() for row in self.camera_rows])
         set_camera_list(data, "cameraSerialNo", [row["serial"].text().strip() for row in self.camera_rows])
         set_camera_list(data, "cameraSettings", [row["settings"].text().strip() for row in self.camera_rows])
@@ -307,6 +308,7 @@ class ConfigTab(QWidget):
         set_if_present(data, "waitForTriggerStart", bool(self.wait_for_trigger.isChecked()))
         set_if_present(data, "pulseFrequencyHz", self._clean_number(self.pulse_hz.value()))
         set_if_present(data, "pulsePalPort", self.pulse_port.text().strip())
+        set_if_present(data, "pulsePalChannels", self._parse_int_list(self.pulse_channels.text(), default=[1, 2]))
         set_if_present(data, "enableGPIOTimestampLogging", bool(self.gpio_enabled.isChecked()))
         set_if_present(data, "gpioSerialPort", self.gpio_port.text().strip())
         set_if_present(data, "gpioLogFilename", self.gpio_log_name.text().strip() or "gpio_log.csv")
@@ -315,6 +317,25 @@ class ConfigTab(QWidget):
     def _clean_number(self, value):
         value = float(value)
         return int(value) if value.is_integer() else value
+
+    def _parse_int_list(self, text, default=None):
+        raw = str(text or "").strip()
+        if not raw:
+            return list(default or [])
+        parts = [part.strip() for part in raw.replace("[", "").replace("]", "").split(",")]
+        values = []
+        for part in parts:
+            if not part:
+                continue
+            values.append(int(part))
+        return values or list(default or [])
+
+    def _format_int_list(self, values):
+        if isinstance(values, list):
+            return ", ".join(str(int(value)) for value in values)
+        if values in [None, ""]:
+            return ""
+        return str(values)
 
     def _validate_fields(self):
         if not self.config.data:
@@ -418,11 +439,15 @@ class ConfigTab(QWidget):
 
     def _populate_camera_rows(self, data):
         names = camera_names(data)
+        selections = camera_selection(data)
         serials = camera_serials(data)
         settings_paths = camera_settings_paths(data)
         gpu_ids = camera_gpu_ids(data)
         for index, row in enumerate(self.camera_rows):
-            row["name"].setText(names[index] if index < len(names) else "Camera{}".format(index + 1))
+            default_name = names[index] if index < len(names) else "Camera{}".format(index + 1)
+            if index < len(selections):
+                default_name = default_name or "Camera{}".format(selections[index] + 1)
+            row["name"].setText(default_name)
             row["serial"].setText(serials[index] if index < len(serials) else "")
             row["settings"].setText(settings_paths[index] if index < len(settings_paths) else "")
             row["gpu"].setValue(gpu_ids[index] if index < len(gpu_ids) else 0)

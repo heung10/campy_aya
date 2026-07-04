@@ -18,6 +18,7 @@ def DefaultParams():
 	params["saveFolder"] = "./test"
 	params["videoFolder"] = "./test"
 	params["videoFilename"] = "0.mp4"
+	params["appendDateTimeSuffix"] = False
 	params["frameRate"] = 100
 	params["recTimeInSec"] = 10
 	params["infiniteRecording"] = False
@@ -150,8 +151,14 @@ def AutoParams(params, default_params):
 			params["cameraNames"] = ["Camera%s" % n for n in range(params["numCams"])]
 		if "cameraSelection" not in params.keys():
 			params["cameraSelection"] = [n for n in range(params["numCams"])]
+		elif type(params["cameraSelection"]) is not list:
+			params["cameraSelection"] = [params["cameraSelection"]]
 	else:
 		print("Please configure 'numCams' to the number of cameras you want to acquire.")
+
+	if type(params.get("cameraSelection")) is list:
+		if len(params["cameraSelection"]) != params["numCams"]:
+			params["cameraSelection"] = [n for n in range(params["numCams"])]
 
 	return params
 
@@ -290,7 +297,7 @@ def GetCameraIndex(systems, cam_params):
 	serials = systems[cam_make]["serials"]
 	requested_serial = cam_params.get("cameraSerialNo", "None")
 
-	if requested_serial != "None":
+	if not IsUnset(requested_serial):
 		requested_serial = str(requested_serial)
 		if requested_serial not in serials:
 			raise ValueError(
@@ -321,6 +328,36 @@ def OptParams(cam_params):
 	return cam_params
 
 
+def ValidateMultiCameraParams(params):
+	num_cams = int(params["numCams"])
+	camera_names = params.get("cameraNames", [])
+	camera_selection = params.get("cameraSelection", [])
+
+	if type(camera_names) is not list or len(camera_names) != num_cams:
+		raise ValueError(
+			"cameraNames must be a list with exactly numCams ({}) entries.".format(num_cams)
+		)
+	if len(set(camera_names)) != len(camera_names):
+		raise ValueError("cameraNames must be unique.")
+
+	if type(camera_selection) is not list or len(camera_selection) != num_cams:
+		raise ValueError(
+			"cameraSelection must be a list with exactly numCams ({}) entries.".format(num_cams)
+		)
+	if len(set(camera_selection)) != len(camera_selection):
+		raise ValueError("cameraSelection entries must be unique.")
+	if any(int(index) < 0 for index in camera_selection):
+		raise ValueError("cameraSelection cannot contain negative indices.")
+
+	camera_settings = params.get("cameraSettings", [])
+	if type(camera_settings) is list and len(camera_settings) == num_cams:
+		for index, settings_path in enumerate(camera_settings):
+			if IsUnset(settings_path):
+				raise ValueError(
+					"cameraSettings is empty for camera {}.".format(camera_names[index])
+				)
+
+
 def CheckConfig(params, clargs):
 	default_params = DefaultParams()
 	for key,value in default_params.items():
@@ -332,6 +369,7 @@ def CheckConfig(params, clargs):
 		params[key] = value
 
 	params = NormalizeFolderParams(params)
+	ValidateMultiCameraParams(params)
 
 	invalid_keys = []
 	for key in params.keys():
@@ -388,6 +426,12 @@ def ParseClargs(parser):
 		"--videoFilename", 
 		dest="videoFilename", 
 		help="Name for video output file.",
+	)
+	parser.add_argument(
+		"--appendDateTimeSuffix",
+		dest="appendDateTimeSuffix",
+		type=bool,
+		help="If True, append a date/time suffix to videoFilename when the GUI prepares acquisition.",
 	)
 	parser.add_argument(
 		"--frameRate", 

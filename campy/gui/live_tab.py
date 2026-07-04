@@ -56,6 +56,7 @@ class LiveTab(QWidget):
         self.runtime_rows = {}
         self.preflight_rows = {}
         self.gpio_runtime_count = 0
+        self.elapsed_seconds = 0.0
         self.exposure_rows = []
         self._build_ui()
         self.refresh_timer = QTimer(self)
@@ -66,7 +67,9 @@ class LiveTab(QWidget):
         self.config_data = data or {}
         self.config_path = path or ""
         self.preflight_rows = {}
+        self.elapsed_seconds = 0.0
         self._rebuild_exposure_controls()
+        self._update_duration_label()
         self.refresh_status()
 
     def set_preflight_results(self, results):
@@ -95,6 +98,7 @@ class LiveTab(QWidget):
                 self.runtime_rows = {}
                 self.preflight_rows = {}
                 self.gpio_runtime_count = 0
+                self.elapsed_seconds = 0.0
         elif self.process_state == "stopping":
             self.recording_phase = "stopping"
         elif self.process_state == "running" and self.recording_phase == "idle":
@@ -104,6 +108,7 @@ class LiveTab(QWidget):
         self.start_button.setEnabled(self.process_state == "running" and self.ready_to_start)
         self.stop_button.setEnabled(self.process_state in ["running", "stopping"])
         self._update_exposure_buttons()
+        self._update_duration_label()
         self.refresh_status()
 
     def set_ready_to_start(self, ready):
@@ -114,6 +119,7 @@ class LiveTab(QWidget):
         self._update_exposure_buttons()
         if ready:
             self.process_state_label.setText("Process: ready")
+        self._update_duration_label()
         self.refresh_status()
 
     def set_recording_started(self):
@@ -121,10 +127,12 @@ class LiveTab(QWidget):
         self.session_complete = False
         self.runtime_rows = {}
         self.gpio_runtime_count = 0
+        self.elapsed_seconds = 0.0
         self.ready_to_start = False
         self.start_button.setEnabled(False)
         self._update_exposure_buttons()
         self.process_state_label.setText("Process: recording")
+        self._update_duration_label()
         self.refresh_status()
 
     def set_session_complete(self):
@@ -136,6 +144,7 @@ class LiveTab(QWidget):
         self.stop_button.setEnabled(False)
         self._update_exposure_buttons()
         self.process_state_label.setText("Process: finished")
+        self._update_duration_label()
 
     def append_log(self, line):
         if not line:
@@ -176,6 +185,8 @@ class LiveTab(QWidget):
                 "last_update": datetime.now().strftime("%H:%M:%S"),
                 "notes": "elapsed {} sec".format(elapsed),
             }
+            self.elapsed_seconds = max(self.elapsed_seconds, float(elapsed))
+            self._update_duration_label()
             self.refresh_status()
             return
 
@@ -241,6 +252,9 @@ class LiveTab(QWidget):
         controls.addWidget(self.stop_button)
         controls.addWidget(self.refresh_button)
         controls.addStretch(1)
+        self.duration_label = QLabel("Duration: target - | elapsed 00:00:00")
+        self.duration_label.setProperty("muted", True)
+        controls.addWidget(self.duration_label)
         controls.addWidget(self.process_state_label)
         layout.addLayout(controls)
 
@@ -363,3 +377,17 @@ class LiveTab(QWidget):
 
     def _request_exposure_change(self, camera_name, field):
         self.exposureRequested.emit(str(camera_name), float(field.value()))
+
+    def _update_duration_label(self):
+        target = "Infinite" if self.config_data.get("infiniteRecording", False) else self._format_hms(
+            float(self.config_data.get("recTimeInSec", 0) or 0)
+        )
+        elapsed = self._format_hms(self.elapsed_seconds)
+        self.duration_label.setText("Duration: target {} | elapsed {}".format(target, elapsed))
+
+    def _format_hms(self, seconds):
+        total_seconds = max(0, int(seconds))
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        secs = total_seconds % 60
+        return "{:02d}:{:02d}:{:02d}".format(hours, minutes, secs)

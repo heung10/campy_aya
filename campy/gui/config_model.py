@@ -5,6 +5,7 @@ Small YAML model helpers for the campy GUI.
 from __future__ import print_function
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -130,7 +131,12 @@ def camera_gpu_ids(data):
 
 
 def set_camera_names(data, names):
-    clean = [str(name).strip() for name in names if str(name).strip()]
+    clean = []
+    for index, name in enumerate(names):
+        label = str(name).strip()
+        if not label:
+            label = "Camera{}".format(index + 1)
+        clean.append(label)
     if clean:
         data["cameraNames"] = clean
 
@@ -142,6 +148,47 @@ def set_camera_list(data, key, values, coerce=None):
             value = coerce(value)
         clean.append(value)
     data[key] = clean
+
+
+def camera_selection(data):
+    count = int(get_value(data, "numCams", 1) or 1)
+    values = data.get("cameraSelection")
+    if isinstance(values, list):
+        clean = []
+        for index, value in enumerate(values):
+            try:
+                clean.append(int(value))
+            except Exception:
+                clean.append(index)
+    elif values in (None, ""):
+        clean = []
+    else:
+        try:
+            clean = [int(values)]
+        except Exception:
+            clean = []
+
+    while len(clean) < count:
+        clean.append(len(clean))
+    return clean[:count]
+
+
+def append_timestamp_to_video_filename(filename, now=None):
+    current = now or datetime.now()
+    raw_name = str(filename or "").strip()
+    if not raw_name:
+        raw_name = "recording.mp4"
+
+    path = Path(raw_name)
+    stem = path.stem or "recording"
+    extension = path.suffix or ".mp4"
+    return "{}_{}{}".format(stem, current.strftime("%Y%m%d_%H%M%S"), extension)
+
+
+def auto_camera_video_filenames(data, now=None):
+    current = now or datetime.now()
+    suffix = current.strftime("%Y%m%d_%H%M%S")
+    return ["{}_{}.mp4".format(name, suffix) for name in camera_names(data)]
 
 
 def resolved_save_folder(data):
@@ -172,6 +219,14 @@ def validate_config(data):
             messages.append(("error", "{} must be numeric.".format(key)))
 
     try:
+        pulse_hz = float(get_value(data, "pulseFrequencyHz", 0) or 0)
+        pulse_high_time = float(get_value(data, "pulseHighTimeSec", 0) or 0)
+        if pulse_hz > 0 and pulse_high_time >= (1.0 / pulse_hz):
+            messages.append(("error", "pulseHighTimeSec must be shorter than one pulse period."))
+    except Exception:
+        messages.append(("error", "pulseHighTimeSec must be numeric."))
+
+    try:
         if float(get_value(data, "gpioDuplicateThresholdMs", 1.0)) < 0:
             messages.append(("error", "gpioDuplicateThresholdMs must be non-negative."))
     except Exception:
@@ -184,14 +239,29 @@ def validate_config(data):
         if str(get_value(data, "triggerController", "")).lower() == "pulsepal" and not data.get("pulsePalPort"):
             messages.append(("error", "PulsePal trigger is enabled, but pulsePalPort is empty."))
 
-    names = camera_names(data)
-    if len(names) != num_cams:
+    raw_names = data.get("cameraNames")
+    if isinstance(raw_names, list) and len(raw_names) != num_cams:
         messages.append(("warning", "cameraNames will be padded/truncated to match numCams."))
+
+    names = camera_names(data)
+    if len(set(names)) != len(names):
+        messages.append(("error", "cameraNames must be unique because they define preview names and output folders."))
+
+    selection = camera_selection(data)
+    if len(set(selection)) != len(selection):
+        messages.append(("error", "cameraSelection must contain unique camera indices."))
+    if any(index < 0 for index in selection):
+        messages.append(("error", "cameraSelection cannot contain negative indices."))
 
     for key in ["cameraSerialNo", "cameraSettings", "gpuID"]:
         value = data.get(key)
         if isinstance(value, list) and len(value) != num_cams:
             messages.append(("warning", "{} will be padded/truncated to match numCams in the GUI.".format(key)))
+
+    settings_paths = camera_settings_paths(data)
+    for index, settings_path in enumerate(settings_paths):
+        if not str(settings_path).strip():
+            messages.append(("error", "cameraSettings is empty for {}.".format(names[index])))
 
     if not messages:
         messages.append(("ok", "Config looks ready for a first-pass GUI launch."))

@@ -4,6 +4,7 @@ Main window for the campy GUI.
 
 from __future__ import print_function
 
+from datetime import datetime
 from pathlib import Path
 
 from PyQt5.QtCore import QSettings
@@ -15,7 +16,7 @@ from .config_tab import ConfigTab
 from .live_tab import LiveTab
 from .preview_tab import PreviewTab
 from .process_runner import AcquisitionRunner
-from .config_model import get_value
+from .config_model import auto_camera_video_filenames, camera_names, get_value, resolved_save_folder
 from .style import APP_STYLE
 
 
@@ -47,9 +48,13 @@ class MainWindow(QMainWindow):
         self.live_tab.startRequested.connect(self._start_recording_requested)
         self.live_tab.stopRequested.connect(self.runner.request_stop)
         self.live_tab.exposureRequested.connect(self._exposure_requested)
+        self.preview_tab.readyRequested.connect(self._ready_requested)
+        self.preview_tab.startRequested.connect(self._start_recording_requested)
+        self.preview_tab.stopRequested.connect(self.runner.request_stop)
         self.runner.outputLine.connect(self._process_output)
         self.runner.preflightChecked.connect(self.live_tab.set_preflight_results)
         self.runner.stateChanged.connect(self.live_tab.set_process_state)
+        self.runner.stateChanged.connect(self.preview_tab.set_process_state)
         self.runner.finished.connect(self._process_finished)
         self.tabs.currentChanged.connect(self._tab_changed)
 
@@ -85,9 +90,14 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Save YAML before preparing so acquisition uses the edited values.", 8000)
             self.tabs.setCurrentWidget(self.config_tab)
             return
+        prepared_at = datetime.now()
+        existing_outputs = self._existing_output_paths(prepared_at=prepared_at)
+        if existing_outputs and not self._confirm_overwrite(existing_outputs):
+            self.statusBar().showMessage("Recording preparation canceled after overwrite warning.", 6000)
+            return
         try:
             self.live_tab.log.clear()
-            self.runner.prepare(config_path)
+            self.runner.prepare(config_path, prepared_at=prepared_at)
             self.preview_tab.set_preview_folder(self.runner.preview_folder)
             self.tabs.setCurrentWidget(self.live_tab)
             self.statusBar().showMessage("Preparing cameras. Wait for the ready message, then click Start Recording.", 8000)
@@ -99,6 +109,7 @@ class MainWindow(QMainWindow):
     def _start_recording_requested(self):
         self.runner.start_recording()
         self.live_tab.set_recording_started()
+        self.preview_tab.set_recording_started()
         self.statusBar().showMessage("Recording start command sent.", 5000)
 
     def _exposure_requested(self, camera_name, exposure_time_us):
@@ -115,14 +126,17 @@ class MainWindow(QMainWindow):
 
     def _process_output(self, line):
         self.live_tab.append_log(line)
+        self.preview_tab.update_runtime_from_line(line)
         if "Press Enter to start" in line or "All cameras are ready" in line:
             self.live_tab.set_ready_to_start(True)
+            self.preview_tab.set_ready_to_start(True)
             self.statusBar().showMessage("Cameras ready. Click 'Start Recording' in the Live tab.", 10000)
 
     def _process_finished(self, return_code):
         self._postprocess_gpio_log()
         self._session_complete = True
         self.live_tab.set_session_complete()
+        self.preview_tab.set_session_complete()
         self.tabs.setTabEnabled(0, False)
         self.tabs.setTabEnabled(2, False)
         self.tabs.setCurrentWidget(self.live_tab)
@@ -204,6 +218,40 @@ class MainWindow(QMainWindow):
         self.config_tab.config_path.setText(str(config_path))
         if self.config_tab.load_current_config():
             self.statusBar().showMessage("Restored last config: {}".format(config_path), 5000)
+
+    def _existing_output_paths(self, prepared_at=None):
+        config_data = self.config_tab.config.data or {}
+        if not config_data:
+            return []
+
+        save_folder = resolved_save_folder(config_data)
+        video_names = auto_camera_video_filenames(config_data, now=prepared_at or datetime.now())
+        existing = []
+        for camera_name, video_name in zip(camera_names(config_data), video_names):
+            video_path = save_folder / camera_name / video_name
+            if video_path.exists():
+                existing.append(video_path)
+
+        if get_value(config_data, "enableGPIOTimestampLogging", False):
+            gpio_path = save_folder / str(get_value(config_data, "gpioLogFilename", "gpio_log.csv"))
+            if gpio_path.exists():
+                existing.append(gpio_path)
+
+        return existing
+
+    def _confirm_overwrite(self, existing_paths):
+        preview_lines = [str(path) for path in existing_paths[:8]]
+        if len(existing_paths) > 8:
+            preview_lines.append("... and {} more".format(len(existing_paths) - 8))
+
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Overwrite Existing Files")
+        dialog.setIcon(QMessageBox.Warning)
+        dialog.setText("Existing video or log files were found in the save folder.")
+        dialog.setInformativeText("Do you want to overwrite them?\n\n{}".format("\n".join(preview_lines)))
+        dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        dialog.setDefaultButton(QMessageBox.No)
+        return dialog.exec_() == QMessageBox.Yes
 
     def _validate_exposure_request(self, exposure_time_us):
         frame_rate = float(get_value(self.live_tab.config_data or {}, "frameRate", 0) or 0)

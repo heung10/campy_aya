@@ -14,8 +14,93 @@ def LoadSystem(params):
 
 
 def GetDeviceList(system):
+	return EnumerateBaslerDevices(system)
 
-	return system.EnumerateDevices()
+
+def EnumerateBaslerDevices(system):
+	devices = []
+	seen = set()
+
+	def device_key(device_info):
+		try:
+			full_name = device_info.GetFullName()
+			if full_name not in [None, "", "N/A"]:
+				return ("full", str(full_name))
+		except Exception:
+			pass
+
+		try:
+			serial = device_info.GetSerialNumber()
+		except Exception:
+			serial = ""
+		try:
+			device_class = device_info.GetDeviceClass()
+		except Exception:
+			device_class = ""
+		try:
+			model = device_info.GetModelName()
+		except Exception:
+			model = ""
+		return ("fallback", str(serial), str(device_class), str(model))
+
+	def add_devices(found_devices, source_label):
+		added = 0
+		for device_info in found_devices:
+			key = device_key(device_info)
+			if key in seen:
+				continue
+			seen.add(key)
+			devices.append(device_info)
+			added += 1
+		print("Basler discovery {}: {} device(s).".format(source_label, added), flush=True)
+
+	try:
+		add_devices(system.EnumerateDevices(), "factory EnumerateDevices")
+	except Exception as e:
+		logging.warning("Basler factory enumeration failed: %s", e)
+
+	try:
+		for tl_info in system.EnumerateTls():
+			try:
+				device_class = tl_info.GetDeviceClass()
+			except Exception:
+				device_class = "Unknown"
+
+			try:
+				tl = system.CreateTl(tl_info)
+			except Exception as e:
+				logging.warning("Could not create transport layer %s: %s", device_class, e)
+				continue
+
+			try:
+				add_devices(tl.EnumerateDevices(), "{} EnumerateDevices".format(device_class))
+			except Exception as e:
+				logging.warning("%s device enumeration failed: %s", device_class, e)
+
+			if device_class == "BaslerGigE" and hasattr(tl, "EnumerateAllDevices"):
+				try:
+					add_devices(tl.EnumerateAllDevices(), "{} EnumerateAllDevices".format(device_class))
+				except Exception as e:
+					logging.warning("%s all-device enumeration failed: %s", device_class, e)
+	except Exception as e:
+		logging.warning("Basler transport-layer enumeration failed: %s", e)
+
+	for index, device_info in enumerate(devices):
+		try:
+			print(
+				"Basler device {}: serial {} model {} class {} tl {}.".format(
+					index,
+					device_info.GetSerialNumber(),
+					device_info.GetModelName(),
+					device_info.GetDeviceClass(),
+					device_info.GetTLType() if hasattr(device_info, "GetTLType") else "Unknown",
+				),
+				flush=True,
+			)
+		except Exception:
+			pass
+
+	return devices
 
 
 def LoadDevice(systems, params, cam_params):
