@@ -27,12 +27,15 @@ class AcquisitionRunner(QObject):
     stateChanged = pyqtSignal(str)
     finished = pyqtSignal(int)
     preflightChecked = pyqtSignal(dict)
+    preparationSucceeded = pyqtSignal(str)
+    preparationFailed = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super(AcquisitionRunner, self).__init__(parent)
         self._process = None
         self._reader_thread = None
         self._wait_thread = None
+        self._prepare_thread = None
         self._runtime_config_path = None
         self.preview_folder = None
         self._stop_file_path = None
@@ -45,6 +48,9 @@ class AcquisitionRunner(QObject):
 
     def is_running(self):
         return self._process is not None and self._process.poll() is None
+
+    def is_preparing(self):
+        return self._prepare_thread is not None and self._prepare_thread.is_alive()
 
     def prepare(self, config_path, prepared_at=None):
         if self.is_running():
@@ -83,6 +89,28 @@ class AcquisitionRunner(QObject):
         self._reader_thread.start()
         self._wait_thread = threading.Thread(target=self._wait_for_exit, daemon=True)
         self._wait_thread.start()
+
+    def prepare_async(self, config_path, prepared_at=None):
+        if self.is_running():
+            raise RuntimeError("Acquisition is already running.")
+        if self.is_preparing():
+            raise RuntimeError("Acquisition preparation is already running.")
+
+        self._prepare_thread = threading.Thread(
+            target=self._prepare_worker,
+            args=(config_path, prepared_at),
+            daemon=True,
+        )
+        self._prepare_thread.start()
+
+    def _prepare_worker(self, config_path, prepared_at):
+        try:
+            self.prepare(config_path, prepared_at=prepared_at)
+            self.preparationSucceeded.emit(str(self.preview_folder or ""))
+        except Exception as exc:
+            self.preparationFailed.emit(str(exc))
+        finally:
+            self._prepare_thread = None
 
     def start_recording(self):
         if not self.is_running() or self._process.stdin is None:
@@ -217,6 +245,7 @@ class AcquisitionRunner(QObject):
         trigger_controller = str(data.get("triggerController", "")).lower()
         if trigger_enabled and trigger_controller == "pulsepal":
             try:
+                self.outputLine.emit("[GUI] Checking PulsePal connection...")
                 ok, message = pulsepal_trigger.CheckConnection(data)
                 results["Trigger"] = {"ok": bool(ok), "state": "Ready" if ok else "Disconnected", "message": message}
                 self.outputLine.emit("[GUI] PulsePal preflight: {}.".format(message))
@@ -233,6 +262,7 @@ class AcquisitionRunner(QObject):
 
         if bool(data.get("enableGPIOTimestampLogging", False)):
             try:
+                self.outputLine.emit("[GUI] Checking GPIO connection...")
                 ok, message = gpio_logger.CheckConnection(data)
                 results["GPIO"] = {"ok": bool(ok), "state": "Ready" if ok else "Disconnected", "message": message}
                 self.outputLine.emit("[GUI] GPIO preflight: {}.".format(message))

@@ -55,6 +55,8 @@ class MainWindow(QMainWindow):
         self.runner.preflightChecked.connect(self.live_tab.set_preflight_results)
         self.runner.stateChanged.connect(self.live_tab.set_process_state)
         self.runner.stateChanged.connect(self.preview_tab.set_process_state)
+        self.runner.preparationSucceeded.connect(self._preparation_succeeded)
+        self.runner.preparationFailed.connect(self._preparation_failed)
         self.runner.finished.connect(self._process_finished)
         self.tabs.currentChanged.connect(self._tab_changed)
 
@@ -97,14 +99,21 @@ class MainWindow(QMainWindow):
             return
         try:
             self.live_tab.log.clear()
-            self.runner.prepare(config_path, prepared_at=prepared_at)
-            self.preview_tab.set_preview_folder(self.runner.preview_folder)
-            self.tabs.setCurrentWidget(self.live_tab)
-            self.statusBar().showMessage("Preparing cameras. Wait for the ready message, then click Start Recording.", 8000)
             self.live_tab.append_log("[GUI] Preparing acquisition with {}".format(config_path))
+            self.statusBar().showMessage("Preparing acquisition. The window will stay responsive during hardware checks.", 8000)
+            self.runner.prepare_async(config_path, prepared_at=prepared_at)
         except Exception as exc:
             self.statusBar().showMessage("Could not prepare acquisition: {}".format(exc), 8000)
             self.live_tab.append_log("[GUI] Could not prepare acquisition: {}".format(exc))
+
+    def _preparation_succeeded(self, preview_folder):
+        self.preview_tab.set_preview_folder(preview_folder)
+        self.tabs.setCurrentWidget(self.live_tab)
+        self.statusBar().showMessage("Preparing cameras. Wait for the ready message, then click Start Recording.", 8000)
+
+    def _preparation_failed(self, message):
+        self.statusBar().showMessage("Could not prepare acquisition: {}".format(message), 8000)
+        self.live_tab.append_log("[GUI] Could not prepare acquisition: {}".format(message))
 
     def _start_recording_requested(self):
         self.runner.start_recording()

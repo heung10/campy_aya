@@ -1,4 +1,4 @@
-saveFolder: D:/gui_test
+saveFolder: D:/random_foraging/test1
 videoFilename: 123.mp4
 frameRate: 40
 recTimeInSec: 10000
@@ -8,7 +8,7 @@ cameraSelection: [0]
 cameraNames: [1c]
 cameraMake: basler
 cameraSerialNo: ['41927063']
-cameraSettings: [./configs/RM018/a2A1920-160umBAS_41927063.pfs]
+cameraSettings: ['C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-160umBAS_41927063_gamma1.pfs']
 frameWidth: 1920
 frameHeight: 1200
 cameraTrigger: Line2
@@ -34,7 +34,7 @@ startTriggerController: true
 triggerController: pulsepal
 waitForTriggerStart: true
 pulsePalPythonPath: auto
-pulsePalPort: COM16
+pulsePalPort: COM8
 pulsePalChannels: [1, 2]
 pulseFrequencyHz: 40
 pulseHighTimeSec: 0.005
@@ -43,9 +43,9 @@ pulsePalContinuous: true
 pulsePalVoltage: 5
 pulsePalRestingVoltage: 0
 pulsePalTriggerChannel: 1
-enableGPIOTimestampLogging: false
+enableGPIOTimestampLogging: true
 gpioSerialPort: COM5
 gpioBaudRate: 119200
 gpioLogFilename: gpio_log.csv
-videoFolder: D:/gui_test
+videoFolder: D:/random_foraging/test1
 appendDateTimeSuffix: true
