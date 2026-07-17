@@ -10,8 +10,6 @@ from pathlib import Path
 from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QTabWidget
 
-from campy.gpio import logger as gpio_logger
-
 from .config_tab import ConfigTab
 from .live_tab import LiveTab
 from .preview_tab import PreviewTab
@@ -121,12 +119,12 @@ class MainWindow(QMainWindow):
         self.preview_tab.set_recording_started()
         self.statusBar().showMessage("Recording start command sent.", 5000)
 
-    def _exposure_requested(self, camera_name, exposure_time_us):
+    def _exposure_requested(self, camera_name, exposure_time_ms):
         try:
-            self._validate_exposure_request(exposure_time_us)
-            self.runner.apply_exposure_time(camera_name, exposure_time_us)
+            self._validate_exposure_request(exposure_time_ms)
+            self.runner.apply_exposure_time(camera_name, float(exposure_time_ms) * 1000.0)
             self.statusBar().showMessage(
-                "Requested {} exposure {:.1f} us.".format(camera_name, exposure_time_us),
+                "Requested {} exposure {:.3f} ms.".format(camera_name, exposure_time_ms),
                 5000,
             )
         except Exception as exc:
@@ -142,7 +140,6 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Cameras ready. Click 'Start Recording' in the Live tab.", 10000)
 
     def _process_finished(self, return_code):
-        self._postprocess_gpio_log()
         self._session_complete = True
         self.live_tab.set_session_complete()
         self.preview_tab.set_session_complete()
@@ -182,29 +179,6 @@ class MainWindow(QMainWindow):
         dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
         dialog.setDefaultButton(QMessageBox.Save)
         return dialog.exec_()
-
-    def _postprocess_gpio_log(self):
-        config_data = self.live_tab.config_data or {}
-        if not get_value(config_data, "enableGPIOTimestampLogging", False):
-            return
-
-        threshold_ms = float(get_value(config_data, "gpioDuplicateThresholdMs", 1.0))
-        try:
-            result = gpio_logger.CleanLoggedFile(config_data, min_interval_ms=threshold_ms)
-        except Exception as exc:
-            self.live_tab.append_log("[GUI] GPIO cleanup failed: {}".format(exc))
-            return
-
-        if not result.get("cleaned"):
-            return
-
-        self.live_tab.append_log(
-            "[GUI] GPIO cleanup complete: kept {} events, removed {} ghost/duplicate events at {} ms threshold.".format(
-                result.get("kept", 0),
-                result.get("removed", 0),
-                result.get("threshold_ms", threshold_ms),
-            )
-        )
 
     def _settings(self):
         return QSettings()
@@ -262,16 +236,16 @@ class MainWindow(QMainWindow):
         dialog.setDefaultButton(QMessageBox.No)
         return dialog.exec_() == QMessageBox.Yes
 
-    def _validate_exposure_request(self, exposure_time_us):
+    def _validate_exposure_request(self, exposure_time_ms):
         frame_rate = float(get_value(self.live_tab.config_data or {}, "frameRate", 0) or 0)
         if frame_rate <= 0:
             return
-        frame_period_us = 1e6 / frame_rate
-        if float(exposure_time_us) >= frame_period_us:
+        frame_period_ms = 1000.0 / frame_rate
+        if float(exposure_time_ms) >= frame_period_ms:
             raise RuntimeError(
-                "Exposure time {:.1f} us must be shorter than one frame period at {:.3f} Hz ({:.1f} us).".format(
-                    float(exposure_time_us),
+                "Exposure time {:.3f} ms must be shorter than one frame period at {:.3f} Hz ({:.3f} ms).".format(
+                    float(exposure_time_ms),
                     frame_rate,
-                    frame_period_us,
+                    frame_period_ms,
                 )
             )

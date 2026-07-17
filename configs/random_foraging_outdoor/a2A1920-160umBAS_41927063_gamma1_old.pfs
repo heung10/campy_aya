@@ -54,7 +54,7 @@ BslMultipleROIRowSelector	Row1
 AcquisitionStopMode	AbortExposure
 ExposureTimeMode	Common
 ExposureTimeSelector	Common
-ExposureTime	300.0
+ExposureTime	8000.0
 ExposureTimeSelector	Common
 ExposureAuto	Off
 ExposureMode	Timed

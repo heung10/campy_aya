@@ -331,16 +331,16 @@ class LiveTab(QWidget):
             self.exposure_layout.addWidget(QLabel("Load a config to enable per-camera exposure control."), 0, 0)
             return
 
-        default_exposure = float(self.config_data.get("cameraExposureTimeInUs", 1500) or 1500)
+        default_exposure_ms = float(self.config_data.get("cameraExposureTimeInUs", 1500) or 1500) / 1000.0
         names = camera_names(self.config_data)
         for index, camera_name in enumerate(names[:6]):
             label = QLabel(camera_name)
             spin = QDoubleSpinBox()
-            spin.setRange(10.0, 1000000.0)
-            spin.setDecimals(1)
-            spin.setSuffix(" us")
-            spin.setSingleStep(100.0)
-            spin.setValue(default_exposure)
+            spin.setRange(0.01, 1000.0)
+            spin.setDecimals(3)
+            spin.setSuffix(" ms")
+            spin.setSingleStep(0.1)
+            spin.setValue(default_exposure_ms)
             button = QPushButton("Apply")
             button.setEnabled(False)
             button.clicked.connect(
@@ -371,7 +371,7 @@ class LiveTab(QWidget):
             if row["camera_name"] != camera_name:
                 continue
             row["spin"].blockSignals(True)
-            row["spin"].setValue(float(exposure_time_us))
+            row["spin"].setValue(float(exposure_time_us) / 1000.0)
             row["spin"].blockSignals(False)
             break
 

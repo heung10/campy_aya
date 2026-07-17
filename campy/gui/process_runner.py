@@ -96,6 +96,7 @@ class AcquisitionRunner(QObject):
         if self.is_preparing():
             raise RuntimeError("Acquisition preparation is already running.")
 
+        self._set_state("preparing")
         self._prepare_thread = threading.Thread(
             target=self._prepare_worker,
             args=(config_path, prepared_at),
@@ -108,6 +109,8 @@ class AcquisitionRunner(QObject):
             self.prepare(config_path, prepared_at=prepared_at)
             self.preparationSucceeded.emit(str(self.preview_folder or ""))
         except Exception as exc:
+            if not self.is_running():
+                self._set_state("idle")
             self.preparationFailed.emit(str(exc))
         finally:
             self._prepare_thread = None

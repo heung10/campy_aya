@@ -48,6 +48,21 @@ def TriggerPeriodSec(params):
 	return 1.0 / float(params["frameRate"])
 
 
+def StartGPIOSafely(systems, params):
+	gpio_logger.StartLogging(systems, params)
+
+	if not params.get("enableGPIOTimestampLogging", False):
+		return
+
+	delay_sec = 0.2
+	if delay_sec > 0:
+		print(
+			"Waiting {:.3f} sec for GPIO logger startup before trigger.".format(delay_sec),
+			flush=True,
+		)
+		time.sleep(delay_sec)
+
+
 def StartSynchronizedTrigger(systems, params, triggerStartEvent=None):
 	# Release camera workers first so they are actively waiting on hardware
 	# triggers before Pulse Pal starts generating pulses.
@@ -162,7 +177,7 @@ def Main():
 			p = mp_context.Pool(params["numCams"])
 
 			if TriggerControllerEnabled(params) and not params["waitForTriggerStart"]:
-				gpio_logger.StartLogging(systems, params)
+				StartGPIOSafely(systems, params)
 				StartSynchronizedTrigger(systems, params)
 
 			if params["waitForTriggerStart"]:
@@ -180,7 +195,7 @@ def Main():
 					params["triggerController"]
 				), flush=True)
 				input()
-				gpio_logger.StartLogging(systems, params)
+				StartGPIOSafely(systems, params)
 				StartSynchronizedTrigger(systems, params, triggerStartEvent)
 
 			WaitForAcquisitionComplete(acquireResult, systems, params, stopEvent, triggerStartEvent)

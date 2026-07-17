@@ -1,4 +1,4 @@
-saveFolder: D:/multi_test
+saveFolder: D:/random_foraging/WT2WT4_outdoormedium_071426
 videoFilename: 1c.mp4
 frameRate: 40
 recTimeInSec: 10000
@@ -8,7 +8,8 @@ cameraSelection: [0, 1]
 cameraNames: [1c, 1b]
 cameraMake: basler
 cameraSerialNo: ['41927063', '41927057']
-cameraSettings: [./configs/RM018/a2A1920-160umBAS_41927063.pfs, 'C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-160umBAS_41927057.pfs']
+cameraSettings: ['C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-160umBAS_41927063_gamma1.pfs',
+  'C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-160umBAS_41927063_gamma1.pfs']
 frameWidth: 1920
 frameHeight: 1200
 cameraTrigger: Line2
@@ -44,8 +45,8 @@ pulsePalVoltage: 5
 pulsePalRestingVoltage: 0
 pulsePalTriggerChannel: 1
 enableGPIOTimestampLogging: true
-gpioSerialPort: COM5
+gpioSerialPort: COM6
 gpioBaudRate: 119200
 gpioLogFilename: gpio_log.csv
-videoFolder: D:/multi_test
+videoFolder: D:/random_foraging/WT2WT4_outdoormedium_071426
 appendDateTimeSuffix: true

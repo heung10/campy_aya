@@ -1,4 +1,4 @@
-saveFolder: D:/random_foraging/test1
+saveFolder: D:/logger_test3
 videoFilename: 123.mp4
 frameRate: 40
 recTimeInSec: 10000
@@ -35,7 +35,7 @@ triggerController: pulsepal
 waitForTriggerStart: true
 pulsePalPythonPath: auto
 pulsePalPort: COM8
-pulsePalChannels: [1, 2]
+pulsePalChannels: [1, 2, 3, 4]
 pulseFrequencyHz: 40
 pulseHighTimeSec: 0.005
 pulseTrainDurationSec: 10000
@@ -47,5 +47,5 @@ enableGPIOTimestampLogging: true
 gpioSerialPort: COM5
 gpioBaudRate: 119200
 gpioLogFilename: gpio_log.csv
-videoFolder: D:/random_foraging/test1
+videoFolder: D:/logger_test3
 appendDateTimeSuffix: true
