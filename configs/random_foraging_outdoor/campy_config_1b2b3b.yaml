@@ -1,14 +1,16 @@
-saveFolder: D:/random_foraging/test
-videoFilename: 123.mp4
+saveFolder: D:/multi_test3
+videoFilename: 1c.mp4
 frameRate: 40
 recTimeInSec: 10000
 infiniteRecording: true
-numCams: 1
-cameraSelection: [0]
-cameraNames: [1b]
+numCams: 3
+cameraSelection: [0, 1, 2]
+cameraNames: [1b, 2b, 3b]
 cameraMake: basler
-cameraSerialNo: ['41927057']
-cameraSettings: ['C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-160umBAS_41927063_gamma1.pfs']
+cameraSerialNo: ['41927057', '41927054', '40356999']
+cameraSettings: ['C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-160umBAS_41927057.pfs',
+  'C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-160umBAS_41927054.pfs',
+  'C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-51gmPRO_40356999.pfs']
 frameWidth: 1920
 frameHeight: 1200
 cameraTrigger: Line2
@@ -17,7 +19,7 @@ cameraOutSource: ExposureActive
 cameraDebug: true
 grabTimeoutInMs: 1000
 bufferSize: 500
-gpuID: [0]
+gpuID: [0, 0, 0]
 ffmpegPath: auto
 gpuMake: nvidia
 preset: None
@@ -35,7 +37,7 @@ triggerController: pulsepal
 waitForTriggerStart: true
 pulsePalPythonPath: auto
 pulsePalPort: COM8
-pulsePalChannels: [1, 2]
+pulsePalChannels: [1, 2, 3, 4]
 pulseFrequencyHz: 40
 pulseHighTimeSec: 0.005
 pulseTrainDurationSec: 10000
@@ -43,9 +45,9 @@ pulsePalContinuous: true
 pulsePalVoltage: 5
 pulsePalRestingVoltage: 0
 pulsePalTriggerChannel: 1
-enableGPIOTimestampLogging: true
-gpioSerialPort: COM7
+enableGPIOTimestampLogging: false
+gpioSerialPort: COM11
 gpioBaudRate: 119200
 gpioLogFilename: gpio_log.csv
-videoFolder: D:/random_foraging/test
+videoFolder: D:/multi_test3
 appendDateTimeSuffix: true

@@ -282,9 +282,13 @@ def ApplyRuntimeCameraControl(cam, camera, cam_params, frameNumber):
 	return cam_params
 
 
-def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue=None, triggerStartEvent=None, stopEvent=None):
+def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue=None, triggerStartEvent=None, stopEvent=None, cameraInitialized=None):
 	# Open the camera object
 	cam, camera, cam_params = OpenCamera(cam_params, stopWriteQueue)
+	if cameraInitialized is not None:
+		cameraInitialized.set()
+	if camera is None:
+		return
 
 	# Create dictionary for appending frame number and timestamp information
 	grabdata = GrabData(cam_params)

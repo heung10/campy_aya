@@ -107,6 +107,7 @@ def AcquireOneCamera(args):
 	writeQueue = deque()
 	stopReadQueue = deque([],1)
 	stopWriteQueue = deque([],1)
+	cameraInitialized = threading.Event()
 
 	# Start image window display thread
 	if cam_params["displayFrameRate"] > 0:
@@ -120,8 +121,16 @@ def AcquireOneCamera(args):
 	threading.Thread(
 		target = unicam.GrabFrames,
 		daemon = True,
-		args = (cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue, triggerStartEvent, stopEvent,),
+		args = (cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue, triggerStartEvent, stopEvent, cameraInitialized,),
 		).start()
+
+	# The camera settings file can change the ROI. Wait until it has been loaded
+	# and the camera-reported Width/Height have replaced the YAML defaults before
+	# constructing ffmpeg's raw-video input. Otherwise ffmpeg may interpret, for
+	# example, 1280x1024 frame bytes as 1920x1200 frames and corrupt the video.
+	cameraInitialized.wait()
+	if stopWriteQueue:
+		return
 
 	# Start video file writer (main "consumer" process)
 	writer.WriteFrames(cam_params, writeQueue, stopReadQueue, stopWriteQueue)
