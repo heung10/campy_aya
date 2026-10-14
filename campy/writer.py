@@ -142,33 +142,31 @@ def OpenWriter(cam_params, queue):
 	return writer, writing, readQueue
 
 def WriteFrames(cam_params, writeQueue, stopReadQueue, stopWriteQueue):
-	# Start ffmpeg video writer 
-	writer, writing, readQueue = OpenWriter(cam_params, stopReadQueue)
+	writer = None
 	frames_written = 0
-
-	with QueueKeyboardInterrupt(readQueue):
-		# Write until interrupted and/or stop message received
-		while(writing):
-			if writeQueue:
-				writer.send(writeQueue.popleft())
-				frames_written += 1
-			else:
-				# Once queue is depleted and grabber stops, then stop writing
-				if stopWriteQueue:
+	try:
+		writer, writing, readQueue = OpenWriter(cam_params, stopReadQueue)
+		with QueueKeyboardInterrupt(readQueue):
+			while writing:
+				if writeQueue:
+					writer.send(writeQueue.popleft())
+					frames_written += 1
+				elif stopWriteQueue:
 					writing = False
-				# Otherwise continue writing
-				time.sleep(0.01)
-
-	# Close up...
-	print("Closing video writer for {}. Please wait...".format(cam_params["cameraName"]))
-	time.sleep(1)
-	writer.close()
-
-	# Save writer-side stats separately so they reflect the fully drained queue.
-	folder_name = os.path.join(cam_params["saveFolder"], cam_params["cameraName"])
-	writer_stats_filename = os.path.join(folder_name, 'writer_stats.csv')
-	with open(writer_stats_filename, 'w', newline='') as f:
-		w = csv.writer(f, delimiter=',', quoting=csv.QUOTE_ALL)
-		w.writerow(["framesWritten", frames_written])
-    
-
+				else:
+					time.sleep(.005)
+	finally:
+		# Tell the producer even when ffmpeg failed; its finally block saves metadata.
+		stopReadQueue.append('STOP')
+		try:
+			if writer is not None:
+				print('Closing video writer for {}. Please wait...'.format(cam_params['cameraName']),flush=True)
+				writer.close()
+		finally:
+			folder_name = os.path.join(cam_params['saveFolder'],cam_params['cameraName'])
+			os.makedirs(folder_name,exist_ok=True)
+			filename = os.path.join(folder_name,'writer_stats.csv')
+			with open(filename+'.tmp','w',newline='') as f:
+				w = csv.writer(f,quoting=csv.QUOTE_ALL)
+				w.writerow(['framesWritten',frames_written])
+			os.replace(filename+'.tmp',filename)

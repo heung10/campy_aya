@@ -272,7 +272,7 @@ def _set_float_feature(camera, feature_names, value):
 			maximum = float(node.GetMax())
 			applied = max(minimum, min(maximum, float(value)))
 			node.SetValue(applied)
-			return applied
+			return float(node.GetValue())
 		except Exception:
 			pass
 
@@ -286,7 +286,7 @@ def _set_float_feature(camera, feature_names, value):
 			maximum = float(node.GetMax())
 			applied = max(minimum, min(maximum, float(value)))
 			node.SetValue(applied)
-			return applied
+			return float(node.GetValue())
 		except Exception:
 			pass
 	return None
@@ -406,6 +406,25 @@ def CloseCamera(cam_params, camera):
 	# Close Basler camera after acquisition stops
 	camera.StopGrabbing()
 	camera.Close()
+
+
+def ReadTransportStatistics(camera):
+	"""Best-effort end-of-recording counters, before StopGrabbing resets them."""
+	names = ['Statistic_Missed_Frame_Count', 'Statistic_Buffer_Underrun_Count',
+		'Statistic_Failed_Buffer_Count', 'Statistic_Failed_Packet_Count',
+		'Statistic_Resend_Request_Count', 'Statistic_Resend_Packet_Count',
+		'Statistic_Total_Buffer_Count', 'Statistic_Resynchronization_Count',
+		'Statistic_Last_Failed_Buffer_Status_Text']
+	result = {}
+	nodes = camera.GetStreamGrabberNodeMap()
+	for name in names:
+		try:
+			node = nodes.GetNode(name)
+			if node is not None and geni.IsReadable(node):
+				result[name] = node.ToString()
+		except Exception:
+			pass
+	return result
 
 
 def CloseSystem(system, device_list):

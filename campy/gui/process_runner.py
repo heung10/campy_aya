@@ -137,7 +137,11 @@ class AcquisitionRunner(QObject):
             except Exception as exc:
                 self.outputLine.emit("[GUI] Could not write stop request file: {}".format(exc))
 
-        timer = threading.Timer(20.0, self._interrupt_if_running)
+        # Slow drains / metadata exports must not be killed by a fixed GUI timer.
+        process = self._process
+        timer = threading.Timer(60.0, lambda: self.outputLine.emit(
+            "[GUI] Stop is still pending; preserving acquisition cleanup and metadata export."
+        ) if self._process is process and self.is_running() else None)
         timer.daemon = True
         timer.start()
 
@@ -161,12 +165,15 @@ class AcquisitionRunner(QObject):
             cameras = {}
         cameras[str(camera_name)] = {
             "cameraExposureTimeInUs": float(exposure_time_us),
+            "requestedAtEpochSec": time.time(),
         }
         payload["cameras"] = cameras
         payload["updatedAtEpochSec"] = time.time()
 
-        with open(self._camera_control_file_path, "w", encoding="utf-8") as handle:
+        temp_path = self._camera_control_file_path + '.tmp'
+        with open(temp_path, "w", encoding="utf-8") as handle:
             yaml.safe_dump(payload, handle, sort_keys=False, default_flow_style=False)
+        os.replace(temp_path, self._camera_control_file_path)
         self.outputLine.emit(
             "[GUI] Requested {} exposure time {:.1f} us.".format(str(camera_name), float(exposure_time_us))
         )
@@ -293,7 +300,7 @@ class AcquisitionRunner(QObject):
         data["displayFrameRate"] = 0
         data["waitForTriggerStart"] = True
         data["guiPreviewEnabled"] = True
-        data["guiPreviewFrameRate"] = min(max(preview_rate, 1), 10)
+        data["guiPreviewFrameRate"] = min(max(preview_rate, 1), float(data.get("frameRate", 40)))
         self.preview_folder = tempfile.mkdtemp(prefix="campy_gui_preview_")
         data["guiPreviewFolder"] = self.preview_folder
         stop_handle = tempfile.NamedTemporaryFile(

@@ -1,0 +1,14 @@
+session,entries,reference_frames,ordinal_trigger_mismatches,first_mismatch_saved_frame,ordinal_fit_residual_max_ms,gpio_device_short_intervals,gpio_missing_slots,gpio_gap_positions,camera_gap_positions,gpio_short_events
+WT7_day12_outdoorLearn_100426,190861,190861,0,,0.7827342078599031,0,6,"[635, 965, 1180, 1995, 6435, 7660]","[635, 965, 1180, 1995, 6435, 7660]",[]
+WT7_day12_outdoorMem_100426,163312,163312,0,,0.6679238635838303,0,0,[],[],[]
+WT7_day13_outdoorLearn_100526,136887,136887,0,,0.766341159305739,0,0,[],[],[]
+WT7_day13_outdoorMem_100526,150725,150721,105459,45263,55.640480742340515,4,0,[],[],"[{'row': 45262, 'device_delta_ms': 0}, {'row': 45263, 'device_delta_ms': 0}, {'row': 45264, 'device_delta_ms': 0}, {'row': 45265, 'device_delta_ms': 0}]"
+WT7_day14_outdoorLearn_100626,154383,227103,111095,43289,14.00963719356696,1,0,[],[],"[{'row': 43288, 'device_delta_ms': 10}]"
+WT8_day12_outdoorLearn_100426,180294,180294,0,,0.597485356154337,0,0,[],[],[]
+WT8_day12_outdoorMem_100426,192712,192712,0,,0.6455182701756712,0,2,"[1100, 1225]","[1100, 1225]",[]
+WT8_day13_outdoorLearn_100526,217081,217081,0,,1.9616766915619976,0,3,"[440, 51825, 105850]","[440, 51825, 105850]",[]
+WT8_day13_outdoorMem_100526,92940,92940,0,,0.5346425332390936,0,0,[],[],[]
+WT8_day13_outdoorMemS2_100526,32298,32298,0,,0.5033941485947935,0,0,[],[],[]
+WT8_day14_outdoorLearn_100626,92769,92769,0,,0.6286541265581036,0,1,[1335],[1335],[]
+WT8_day14_outdoorLearnS2_100626,221916,221916,0,,1.7709276935420348,0,0,[],[],[]
+WT8_day14_outdoorMem_100626,72685,72685,0,,0.6079259559792771,0,0,[],[],[]

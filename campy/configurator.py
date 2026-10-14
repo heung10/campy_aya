@@ -407,6 +407,15 @@ def CombineConfigAndClargs(clargs):
 
 
 def ParseClargs(parser):
+	# Optional reliability knobs: omitted values retain the existing metadata keys.
+	for key, help_text in [
+		('metadataFlushIntervalSec', 'Metadata CSV flush interval (default 1 second).'),
+		('exposureAdjustmentIntervalSec', 'Minimum interval after an exposure attempt (default 1 second).'),
+		('exposureBacklogThresholdSec', 'Defer exposure changes above this estimated lag (default 0.25 seconds).'),
+		('postStopDrainSec', 'Maximum camera drain time after stop (default 30 seconds).'),
+		('triggerStopTimeoutSec', 'Trigger stop command timeout (default 3 seconds).'),
+	]:
+		parser.add_argument('--'+key, type=float, default=None, help=help_text)
 	parser.add_argument(
 		"config", metavar="config", help="Campy configuration .yaml file.",
 	)

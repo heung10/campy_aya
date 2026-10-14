@@ -1,0 +1,952 @@
+{
+  "cutoff": "2026-09-05 00:00:00",
+  "sessions": [
+    {
+      "session": "D:\\random_foraging\\RM029_outdoormedium_090526",
+      "date": "2026-09-05",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 155391,
+          "start": "2026-09-05T09:28:17.299893",
+          "total": "155391",
+          "written": "155391"
+        },
+        {
+          "camera": "2b",
+          "frames": 155391,
+          "start": "2026-09-05T09:28:17.297894",
+          "total": "155391",
+          "written": "155391"
+        },
+        {
+          "camera": "3b",
+          "frames": 155371,
+          "start": "2026-09-05T09:28:17.317895",
+          "total": "155371",
+          "written": "155371"
+        },
+        {
+          "camera": "4b",
+          "frames": 155390,
+          "start": "2026-09-05T09:28:17.299893",
+          "total": "155390",
+          "written": "155390"
+        },
+        {
+          "camera": "5b",
+          "frames": 155380,
+          "start": "2026-09-05T09:28:17.317895",
+          "total": "155380",
+          "written": "155380"
+        }
+      ],
+      "difference": 20,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT5_day11_outdoorCalibration2_090526",
+      "date": "2026-09-05",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 12586,
+          "start": "2026-09-05T08:48:36.635587",
+          "total": "12586",
+          "written": "12586"
+        },
+        {
+          "camera": "2b",
+          "frames": 12586,
+          "start": "2026-09-05T08:48:36.633586",
+          "total": "12586",
+          "written": "12586"
+        },
+        {
+          "camera": "3b",
+          "frames": 12585,
+          "start": "2026-09-05T08:48:36.653586",
+          "total": "12585",
+          "written": "12585"
+        },
+        {
+          "camera": "4b",
+          "frames": 12586,
+          "start": "2026-09-05T08:48:36.635587",
+          "total": "12586",
+          "written": "12586"
+        },
+        {
+          "camera": "5b",
+          "frames": 12585,
+          "start": "2026-09-05T08:48:36.653586",
+          "total": "12585",
+          "written": "12585"
+        }
+      ],
+      "difference": 1,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT5_day11_outdoorCalibration_090526",
+      "date": "2026-09-05",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 13793,
+          "start": "2026-09-05T08:37:10.043484",
+          "total": "13793",
+          "written": "13793"
+        },
+        {
+          "camera": "2b",
+          "frames": 13794,
+          "start": "2026-09-05T08:37:10.041483",
+          "total": "13794",
+          "written": "13794"
+        },
+        {
+          "camera": "3b",
+          "frames": 13793,
+          "start": "2026-09-05T08:37:10.061486",
+          "total": "13793",
+          "written": "13793"
+        },
+        {
+          "camera": "4b",
+          "frames": 13794,
+          "start": "2026-09-05T08:37:10.043484",
+          "total": "13794",
+          "written": "13794"
+        },
+        {
+          "camera": "5b",
+          "frames": 13793,
+          "start": "2026-09-05T08:37:10.061486",
+          "total": "13793",
+          "written": "13793"
+        }
+      ],
+      "difference": 1,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT5_day11_outdoormedium_090526",
+      "date": "2026-09-05",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 179529,
+          "start": "2026-09-05T11:04:56.237703",
+          "total": "179529",
+          "written": "179529"
+        },
+        {
+          "camera": "2b",
+          "frames": 179529,
+          "start": "2026-09-05T11:04:56.235702",
+          "total": "179529",
+          "written": "179529"
+        },
+        {
+          "camera": "3b",
+          "frames": 179525,
+          "start": "2026-09-05T11:04:56.255704",
+          "total": "179525",
+          "written": "179525"
+        },
+        {
+          "camera": "4b",
+          "frames": 179529,
+          "start": "2026-09-05T11:04:56.237703",
+          "total": "179529",
+          "written": "179529"
+        },
+        {
+          "camera": "5b",
+          "frames": 179527,
+          "start": "2026-09-05T11:04:56.255704",
+          "total": "179527",
+          "written": "179527"
+        }
+      ],
+      "difference": 4,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT6_day11_outdoormedium_090526",
+      "date": "2026-09-05",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 174234,
+          "start": "2026-09-05T12:45:30.544222",
+          "total": "174234",
+          "written": "174234"
+        },
+        {
+          "camera": "2b",
+          "frames": 174234,
+          "start": "2026-09-05T12:45:30.542221",
+          "total": "174234",
+          "written": "174234"
+        },
+        {
+          "camera": "3b",
+          "frames": 174225,
+          "start": "2026-09-05T12:45:30.562222",
+          "total": "174225",
+          "written": "174225"
+        },
+        {
+          "camera": "4b",
+          "frames": 174234,
+          "start": "2026-09-05T12:45:30.544222",
+          "total": "174234",
+          "written": "174234"
+        },
+        {
+          "camera": "5b",
+          "frames": 174225,
+          "start": "2026-09-05T12:45:30.562222",
+          "total": "174225",
+          "written": "174225"
+        }
+      ],
+      "difference": 9,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT5_day12_outdoorCalibration_090626",
+      "date": "2026-09-06",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 23788,
+          "start": "2026-09-06T09:42:32.133789",
+          "total": "23788",
+          "written": "23788"
+        },
+        {
+          "camera": "2b",
+          "frames": 23788,
+          "start": "2026-09-06T09:42:32.131789",
+          "total": "23788",
+          "written": "23788"
+        },
+        {
+          "camera": "3b",
+          "frames": 23784,
+          "start": "2026-09-06T09:42:32.151790",
+          "total": "23784",
+          "written": "23784"
+        },
+        {
+          "camera": "4b",
+          "frames": 23788,
+          "start": "2026-09-06T09:42:32.133789",
+          "total": "23788",
+          "written": "23788"
+        },
+        {
+          "camera": "5b",
+          "frames": 23786,
+          "start": "2026-09-06T09:42:32.153790",
+          "total": "23786",
+          "written": "23786"
+        }
+      ],
+      "difference": 4,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT5_day12_outdoorLearn_060926",
+      "date": "2026-09-06",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 205110,
+          "start": "2026-09-06T10:44:00.427013",
+          "total": "205110",
+          "written": "205110"
+        },
+        {
+          "camera": "2b",
+          "frames": 205110,
+          "start": "2026-09-06T10:44:00.425011",
+          "total": "205110",
+          "written": "205110"
+        },
+        {
+          "camera": "3b",
+          "frames": 205105,
+          "start": "2026-09-06T10:44:00.445012",
+          "total": "205105",
+          "written": "205105"
+        },
+        {
+          "camera": "4b",
+          "frames": 205110,
+          "start": "2026-09-06T10:44:00.427013",
+          "total": "205110",
+          "written": "205110"
+        },
+        {
+          "camera": "5b",
+          "frames": 205106,
+          "start": "2026-09-06T10:44:00.445012",
+          "total": "205106",
+          "written": "205106"
+        }
+      ],
+      "difference": 5,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT5_day12_outdoorMem_060926",
+      "date": "2026-09-06",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 130477,
+          "start": "2026-09-06T17:20:46.421267",
+          "total": "130477",
+          "written": "130477"
+        },
+        {
+          "camera": "2b",
+          "frames": 130477,
+          "start": "2026-09-06T17:20:46.419267",
+          "total": "130477",
+          "written": "130477"
+        },
+        {
+          "camera": "3b",
+          "frames": 100269,
+          "start": "2026-09-06T17:20:46.439267",
+          "total": "100269",
+          "written": "100269"
+        },
+        {
+          "camera": "4b",
+          "frames": 130268,
+          "start": "2026-09-06T17:20:46.419267",
+          "total": "130268",
+          "written": "130268"
+        },
+        {
+          "camera": "5b",
+          "frames": 130476,
+          "start": "2026-09-06T17:20:46.439267",
+          "total": "130476",
+          "written": "130476"
+        }
+      ],
+      "difference": 30208,
+      "exceeds_100": true
+    },
+    {
+      "session": "D:\\random_foraging\\WT6_day12_outdoorLearn_060926",
+      "date": "2026-09-06",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 149333,
+          "start": "2026-09-06T12:38:20.133905",
+          "total": "149333",
+          "written": "149333"
+        },
+        {
+          "camera": "2b",
+          "frames": 149334,
+          "start": "2026-09-06T12:38:20.131906",
+          "total": "149334",
+          "written": "149334"
+        },
+        {
+          "camera": "3b",
+          "frames": 149322,
+          "start": "2026-09-06T12:38:20.151905",
+          "total": "149322",
+          "written": "149322"
+        },
+        {
+          "camera": "4b",
+          "frames": 149334,
+          "start": "2026-09-06T12:38:20.133905",
+          "total": "149334",
+          "written": "149334"
+        },
+        {
+          "camera": "5b",
+          "frames": 149318,
+          "start": "2026-09-06T12:38:20.153910",
+          "total": "149318",
+          "written": "149318"
+        }
+      ],
+      "difference": 16,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT6_day12_outdoorMem_060926",
+      "date": "2026-09-06",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 57933,
+          "start": "2026-09-06T18:42:58.812598",
+          "total": "57933",
+          "written": "57933"
+        },
+        {
+          "camera": "2b",
+          "frames": 57933,
+          "start": "2026-09-06T18:42:58.810598",
+          "total": "57933",
+          "written": "57933"
+        },
+        {
+          "camera": "3b",
+          "frames": 57931,
+          "start": "2026-09-06T18:42:58.830598",
+          "total": "57931",
+          "written": "57931"
+        },
+        {
+          "camera": "4b",
+          "frames": 57933,
+          "start": "2026-09-06T18:42:58.810598",
+          "total": "57933",
+          "written": "57933"
+        },
+        {
+          "camera": "5b",
+          "frames": 57932,
+          "start": "2026-09-06T18:42:58.830598",
+          "total": "57932",
+          "written": "57932"
+        }
+      ],
+      "difference": 2,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT5_day13_outdoorLearnPM_090726",
+      "date": "2026-09-07",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 109699,
+          "start": "2026-09-07T18:28:37.872193",
+          "total": "109699",
+          "written": "109699"
+        },
+        {
+          "camera": "2b",
+          "frames": 109699,
+          "start": "2026-09-07T18:28:37.870194",
+          "total": "109699",
+          "written": "109699"
+        },
+        {
+          "camera": "3b",
+          "frames": 109696,
+          "start": "2026-09-07T18:28:37.890196",
+          "total": "109696",
+          "written": "109696"
+        },
+        {
+          "camera": "4b",
+          "frames": 108692,
+          "start": "2026-09-07T18:28:37.870194",
+          "total": "108692",
+          "written": "108692"
+        },
+        {
+          "camera": "5b",
+          "frames": 108312,
+          "start": "2026-09-07T18:28:37.890196",
+          "total": "108312",
+          "written": "108312"
+        }
+      ],
+      "difference": 1387,
+      "exceeds_100": true
+    },
+    {
+      "session": "D:\\random_foraging\\WT5_day13_outdoorLearnS2_090726",
+      "date": "2026-09-07",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 81615,
+          "start": "2026-09-07T12:59:57.384368",
+          "total": "81615",
+          "written": "81615"
+        },
+        {
+          "camera": "2b",
+          "frames": 81615,
+          "start": "2026-09-07T12:59:57.382367",
+          "total": "81615",
+          "written": "81615"
+        },
+        {
+          "camera": "3b",
+          "frames": 81608,
+          "start": "2026-09-07T12:59:57.402368",
+          "total": "81608",
+          "written": "81608"
+        },
+        {
+          "camera": "4b",
+          "frames": 81615,
+          "start": "2026-09-07T12:59:57.384368",
+          "total": "81615",
+          "written": "81615"
+        },
+        {
+          "camera": "5b",
+          "frames": 81608,
+          "start": "2026-09-07T12:59:57.402368",
+          "total": "81608",
+          "written": "81608"
+        }
+      ],
+      "difference": 7,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT5_day13_outdoorLearn_090726",
+      "date": "2026-09-07",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 93151,
+          "start": "2026-09-07T12:18:05.217721",
+          "total": "93151",
+          "written": "93151"
+        },
+        {
+          "camera": "2b",
+          "frames": 93151,
+          "start": "2026-09-07T12:18:05.215721",
+          "total": "93151",
+          "written": "93151"
+        },
+        {
+          "camera": "3b",
+          "frames": 93137,
+          "start": "2026-09-07T12:18:05.235720",
+          "total": "93137",
+          "written": "93137"
+        },
+        {
+          "camera": "4b",
+          "frames": 93151,
+          "start": "2026-09-07T12:18:05.215721",
+          "total": "93151",
+          "written": "93151"
+        },
+        {
+          "camera": "5b",
+          "frames": 93143,
+          "start": "2026-09-07T12:18:05.235720",
+          "total": "93143",
+          "written": "93143"
+        }
+      ],
+      "difference": 14,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT6_day13_outdoorCalibration_090726",
+      "date": "2026-09-07",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 30783,
+          "start": "2026-09-07T09:42:21.280723",
+          "total": "30783",
+          "written": "30783"
+        },
+        {
+          "camera": "2b",
+          "frames": 30783,
+          "start": "2026-09-07T09:42:21.278722",
+          "total": "30783",
+          "written": "30783"
+        },
+        {
+          "camera": "3b",
+          "frames": 30783,
+          "start": "2026-09-07T09:42:21.298729",
+          "total": "30783",
+          "written": "30783"
+        },
+        {
+          "camera": "4b",
+          "frames": 30783,
+          "start": "2026-09-07T09:42:21.280723",
+          "total": "30783",
+          "written": "30783"
+        },
+        {
+          "camera": "5b",
+          "frames": 30781,
+          "start": "2026-09-07T09:42:21.300723",
+          "total": "30781",
+          "written": "30781"
+        }
+      ],
+      "difference": 2,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT6_day13_outdoorLearnPM_090726",
+      "date": "2026-09-07",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 163719,
+          "start": "2026-09-07T16:53:15.169435",
+          "total": "163719",
+          "written": "163719"
+        },
+        {
+          "camera": "2b",
+          "frames": 163719,
+          "start": "2026-09-07T16:53:15.167435",
+          "total": "163719",
+          "written": "163719"
+        },
+        {
+          "camera": "3b",
+          "frames": 163713,
+          "start": "2026-09-07T16:53:15.187436",
+          "total": "163713",
+          "written": "163713"
+        },
+        {
+          "camera": "4b",
+          "frames": 163719,
+          "start": "2026-09-07T16:53:15.169435",
+          "total": "163719",
+          "written": "163719"
+        },
+        {
+          "camera": "5b",
+          "frames": 163715,
+          "start": "2026-09-07T16:53:15.189435",
+          "total": "163715",
+          "written": "163715"
+        }
+      ],
+      "difference": 6,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT6_day13_outdoorLearn_090726",
+      "date": "2026-09-07",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 164163,
+          "start": "2026-09-07T10:33:29.554397",
+          "total": "164163",
+          "written": "164163"
+        },
+        {
+          "camera": "2b",
+          "frames": 164163,
+          "start": "2026-09-07T10:33:29.552396",
+          "total": "164163",
+          "written": "164163"
+        },
+        {
+          "camera": "3b",
+          "frames": 164158,
+          "start": "2026-09-07T10:33:29.572396",
+          "total": "164158",
+          "written": "164158"
+        },
+        {
+          "camera": "4b",
+          "frames": 164163,
+          "start": "2026-09-07T10:33:29.554397",
+          "total": "164163",
+          "written": "164163"
+        },
+        {
+          "camera": "5b",
+          "frames": 164161,
+          "start": "2026-09-07T10:33:29.572396",
+          "total": "164161",
+          "written": "164161"
+        }
+      ],
+      "difference": 5,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT5_day14_outdoorLearn_090826",
+      "date": "2026-09-08",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 142851,
+          "start": "2026-09-08T12:03:05.331658",
+          "total": "142851",
+          "written": "142851"
+        },
+        {
+          "camera": "2b",
+          "frames": 142852,
+          "start": "2026-09-08T12:03:05.329658",
+          "total": "142852",
+          "written": "142852"
+        },
+        {
+          "camera": "3b",
+          "frames": 140628,
+          "start": "2026-09-08T12:03:05.349659",
+          "total": "140628",
+          "written": "140628"
+        },
+        {
+          "camera": "4b",
+          "frames": 142100,
+          "start": "2026-09-08T12:03:05.331658",
+          "total": "142100",
+          "written": "142100"
+        },
+        {
+          "camera": "5b",
+          "frames": 142686,
+          "start": "2026-09-08T12:03:05.349659",
+          "total": "142686",
+          "written": "142686"
+        }
+      ],
+      "difference": 2224,
+      "exceeds_100": true
+    },
+    {
+      "session": "D:\\random_foraging\\WT5_day14_outdoorMem_090826",
+      "date": "2026-09-08",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 109432,
+          "start": "2026-09-08T18:00:05.118602",
+          "total": "109432",
+          "written": "109432"
+        },
+        {
+          "camera": "2b",
+          "frames": 109432,
+          "start": "2026-09-08T18:00:05.116603",
+          "total": "109432",
+          "written": "109432"
+        },
+        {
+          "camera": "3b",
+          "frames": 109431,
+          "start": "2026-09-08T18:00:05.136603",
+          "total": "109431",
+          "written": "109431"
+        },
+        {
+          "camera": "4b",
+          "frames": 109432,
+          "start": "2026-09-08T18:00:05.118602",
+          "total": "109432",
+          "written": "109432"
+        },
+        {
+          "camera": "5b",
+          "frames": 109432,
+          "start": "2026-09-08T18:00:05.136603",
+          "total": "109432",
+          "written": "109432"
+        }
+      ],
+      "difference": 1,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT6_day14_outdoorCalibration_090826",
+      "date": "2026-09-08",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 22260,
+          "start": "2026-09-08T09:38:58.604319",
+          "total": "22260",
+          "written": "22260"
+        },
+        {
+          "camera": "2b",
+          "frames": 22260,
+          "start": "2026-09-08T09:38:58.602318",
+          "total": "22260",
+          "written": "22260"
+        },
+        {
+          "camera": "3b",
+          "frames": 22256,
+          "start": "2026-09-08T09:38:58.622319",
+          "total": "22256",
+          "written": "22256"
+        },
+        {
+          "camera": "4b",
+          "frames": 22260,
+          "start": "2026-09-08T09:38:58.604319",
+          "total": "22260",
+          "written": "22260"
+        },
+        {
+          "camera": "5b",
+          "frames": 22257,
+          "start": "2026-09-08T09:38:58.624320",
+          "total": "22257",
+          "written": "22257"
+        }
+      ],
+      "difference": 4,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT6_day14_outdoorLearn_090826",
+      "date": "2026-09-08",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 150298,
+          "start": "2026-09-08T10:15:21.974191",
+          "total": "150298",
+          "written": "150298"
+        },
+        {
+          "camera": "2b",
+          "frames": 150298,
+          "start": "2026-09-08T10:15:21.972191",
+          "total": "150298",
+          "written": "150298"
+        },
+        {
+          "camera": "3b",
+          "frames": 150291,
+          "start": "2026-09-08T10:15:21.990196",
+          "total": "150291",
+          "written": "150291"
+        },
+        {
+          "camera": "4b",
+          "frames": 150298,
+          "start": "2026-09-08T10:15:21.972191",
+          "total": "150298",
+          "written": "150298"
+        },
+        {
+          "camera": "5b",
+          "frames": 150292,
+          "start": "2026-09-08T10:15:21.992185",
+          "total": "150292",
+          "written": "150292"
+        }
+      ],
+      "difference": 7,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT6_day14_outdoorMem2_090826",
+      "date": "2026-09-08",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 65691,
+          "start": "2026-09-08T16:53:59.817062",
+          "total": "65691",
+          "written": "65691"
+        },
+        {
+          "camera": "2b",
+          "frames": 65691,
+          "start": "2026-09-08T16:53:59.815063",
+          "total": "65691",
+          "written": "65691"
+        },
+        {
+          "camera": "3b",
+          "frames": 65690,
+          "start": "2026-09-08T16:53:59.835061",
+          "total": "65690",
+          "written": "65690"
+        },
+        {
+          "camera": "4b",
+          "frames": 65691,
+          "start": "2026-09-08T16:53:59.815063",
+          "total": "65691",
+          "written": "65691"
+        },
+        {
+          "camera": "5b",
+          "frames": 65691,
+          "start": "2026-09-08T16:53:59.835061",
+          "total": "65691",
+          "written": "65691"
+        }
+      ],
+      "difference": 1,
+      "exceeds_100": false
+    },
+    {
+      "session": "D:\\random_foraging\\WT6_day14_outdoorMem_090826",
+      "date": "2026-09-08",
+      "cameras": [
+        {
+          "camera": "1b",
+          "frames": 60424,
+          "start": "2026-09-08T16:24:25.369901",
+          "total": "60424",
+          "written": "60424"
+        },
+        {
+          "camera": "2b",
+          "frames": 60424,
+          "start": "2026-09-08T16:24:25.367901",
+          "total": "60424",
+          "written": "60424"
+        },
+        {
+          "camera": "3b",
+          "frames": 60420,
+          "start": "2026-09-08T16:24:25.387575",
+          "total": "60420",
+          "written": "60420"
+        },
+        {
+          "camera": "4b",
+          "frames": 60424,
+          "start": "2026-09-08T16:24:25.369901",
+          "total": "60424",
+          "written": "60424"
+        },
+        {
+          "camera": "5b",
+          "frames": 60422,
+          "start": "2026-09-08T16:24:25.389576",
+          "total": "60422",
+          "written": "60422"
+        }
+      ],
+      "difference": 4,
+      "exceeds_100": false
+    }
+  ],
+  "issues": []
+}

@@ -1,4 +1,4 @@
-saveFolder: D:/random_foraging/test
+saveFolder: D:/random_foraging/WT7_day6_outdoorCalibration_092826
 videoFilename: 123.mp4
 frameRate: 40
 recTimeInSec: 10000
@@ -34,8 +34,8 @@ startTriggerController: true
 triggerController: pulsepal
 waitForTriggerStart: true
 pulsePalPythonPath: auto
-pulsePalPort: COM8
-pulsePalChannels: [1, 2]
+pulsePalPort: COM3
+pulsePalChannels: [2]
 pulseFrequencyHz: 40
 pulseHighTimeSec: 0.005
 pulseTrainDurationSec: 10000
@@ -43,9 +43,9 @@ pulsePalContinuous: true
 pulsePalVoltage: 5
 pulsePalRestingVoltage: 0
 pulsePalTriggerChannel: 1
-enableGPIOTimestampLogging: true
-gpioSerialPort: COM7
+enableGPIOTimestampLogging: false
+gpioSerialPort: COM5
 gpioBaudRate: 119200
 gpioLogFilename: gpio_log.csv
-videoFolder: D:/random_foraging/test
+videoFolder: D:/random_foraging/WT7_day6_outdoorCalibration_092826
 appendDateTimeSuffix: true

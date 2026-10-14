@@ -23,6 +23,7 @@ from campy import writer, display, configurator
 from campy.gpio import logger as gpio_logger
 from campy.trigger import trigger
 from campy.cameras import unicam
+from campy.recording_runtime import bounded_call
 
 def OpenSystems():
 	# Configure parameters
@@ -36,10 +37,12 @@ def OpenSystems():
 
 
 def CloseSystems(systems, params):
-	trigger.StopTriggerOutputs(systems, params)
-	unicam.CloseSystems(systems, params)
-	gpio_logger.StopLogging(systems)
-	trigger.CloseTriggerController(systems, params)
+	StopSynchronizedTrigger(systems, params)
+	bounded_call("Close camera systems", lambda: unicam.CloseSystems(systems, params))
+	bounded_call("Close GPIO logger", lambda: gpio_logger.StopLogging(systems))
+	# Never issue more commands concurrently to a controller whose stop is hung.
+	if systems.get('_triggerStopSucceeded', True):
+		bounded_call("Close trigger controller", lambda: trigger.CloseTriggerController(systems, params))
 
 
 def TriggerPeriodSec(params):
@@ -81,7 +84,11 @@ def StopSynchronizedTrigger(systems, params, stopEvent=None, triggerStartEvent=N
 		triggerStartEvent.set()
 
 	# Stop outgoing pulses first so GPIO and camera frame counts stop advancing.
-	trigger.StopTriggerOutputs(systems, params)
+	if not systems.get('_triggerStopAttempted', False):
+		systems['_triggerStopAttempted'] = True
+		systems['_triggerStopSucceeded'] = bounded_call("Stop trigger outputs",
+			lambda: trigger.StopTriggerOutputs(systems, params),
+			float(params.get('triggerStopTimeoutSec', 3.0)))
 
 	# Allow at most one in-flight trigger period to drain before stopping the
 	# camera processes.
@@ -118,11 +125,12 @@ def AcquireOneCamera(args):
 			).start()
 
 	# Start grabbing frames ("producer" thread)
-	threading.Thread(
+	producer = threading.Thread(
 		target = unicam.GrabFrames,
 		daemon = True,
 		args = (cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue, triggerStartEvent, stopEvent, cameraInitialized,),
-		).start()
+		)
+	producer.start()
 
 	# The camera settings file can change the ROI. Wait until it has been loaded
 	# and the camera-reported Width/Height have replaced the YAML defaults before
@@ -130,10 +138,18 @@ def AcquireOneCamera(args):
 	# example, 1280x1024 frame bytes as 1920x1200 frames and corrupt the video.
 	cameraInitialized.wait()
 	if stopWriteQueue:
+		producer.join()
 		return
 
 	# Start video file writer (main "consumer" process)
-	writer.WriteFrames(cam_params, writeQueue, stopReadQueue, stopWriteQueue)
+	try:
+		writer.WriteFrames(cam_params, writeQueue, stopReadQueue, stopWriteQueue)
+	finally:
+		stopReadQueue.append('STOP')
+		if stopEvent is not None:
+			stopEvent.set()
+		# Do not exit a camera process while its metadata exports are still running.
+		producer.join()
 
 
 def TriggerControllerEnabled(params):
@@ -143,10 +159,15 @@ def TriggerControllerEnabled(params):
 def WaitForCamerasReady(readyQueue, acquireResult):
 	ready_cameras = set()
 	while len(ready_cameras) < params["numCams"]:
+		if GuiStopRequested(params):
+			raise RuntimeError("Preparation cancelled by GUI")
 		if acquireResult.ready():
 			acquireResult.get()
+			raise RuntimeError("Camera workers exited before all cameras became ready")
 		try:
 			camera_name = readyQueue.get(timeout=0.25)
+			if isinstance(camera_name, dict):
+				raise RuntimeError(camera_name['error'])
 			ready_cameras.add(camera_name)
 			print("{}/{} cameras ready: {}".format(
 				len(ready_cameras),
@@ -164,7 +185,7 @@ def GuiStopRequested(params):
 
 def WaitForAcquisitionComplete(acquireResult, systems, params, stopEvent, triggerStartEvent):
 	while not acquireResult.ready():
-		if GuiStopRequested(params):
+		if GuiStopRequested(params) or stopEvent.is_set():
 			print("GUI stop requested. Stopping acquisition...", flush=True)
 			StopSynchronizedTrigger(systems, params, stopEvent, triggerStartEvent)
 			break
@@ -203,7 +224,17 @@ def Main():
 				print("All cameras are ready. Press Enter to start {} trigger.".format(
 					params["triggerController"]
 				), flush=True)
-				input()
+				start_requested = threading.Event()
+				def read_start():
+					try:
+						input()
+						start_requested.set()
+					except EOFError:
+						stopEvent.set()
+				threading.Thread(target=read_start, daemon=True).start()
+				while not start_requested.wait(.1):
+					if GuiStopRequested(params) or stopEvent.is_set():
+						return
 				StartGPIOSafely(systems, params)
 				StartSynchronizedTrigger(systems, params, triggerStartEvent)
 
@@ -212,6 +243,7 @@ def Main():
 			print("Stopping acquisition...", flush=True)
 			StopSynchronizedTrigger(systems, params, stopEvent, triggerStartEvent)
 		finally:
+			StopSynchronizedTrigger(systems, params, stopEvent, triggerStartEvent)
 			if p is not None:
 				p.close()
 				p.join()

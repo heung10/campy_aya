@@ -1,4 +1,4 @@
-saveFolder: D:/multi_test
+saveFolder: D:/random_foraging/WT7_day22_outdoorLearn_101426
 videoFilename: 1c.mp4
 frameRate: 40
 recTimeInSec: 10000
@@ -7,10 +7,10 @@ numCams: 5
 cameraSelection: [0, 1, 2, 3, 4]
 cameraNames: [1b, 2b, 3b, 4b, 5b]
 cameraMake: basler
-cameraSerialNo: ['41927057', '41927054', '40356999', '41951098', '40482786']
+cameraSerialNo: ['41927057', '41927054', '40484735', '41951098', '40482786']
 cameraSettings: ['C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-160umBAS_41927057.pfs',
   'C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-160umBAS_41927054.pfs',
-  'C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-51gmPRO_40356999.pfs',
+  'C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-51gmPRO_40484735.pfs',
   'C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-160umBAS_41951098.pfs',
   'C:/Users/Cornell/Desktop/Basler/campy_aya/configs/random_foraging_outdoor/a2A1920-51gmPRO_40482786.pfs']
 frameWidth: 1920
@@ -31,14 +31,14 @@ codec: h264
 quality: 17
 ffmpegLogLevel: warning
 chunkLengthInSec: 5
-displayFrameRate: 20
+displayFrameRate: 10
 displayDownsample: 2
 startArduino: false
 startTriggerController: true
 triggerController: pulsepal
 waitForTriggerStart: true
 pulsePalPythonPath: auto
-pulsePalPort: COM8
+pulsePalPort: COM3
 pulsePalChannels: [1, 2, 3, 4]
 pulseFrequencyHz: 40
 pulseHighTimeSec: 0.005
@@ -51,5 +51,5 @@ enableGPIOTimestampLogging: false
 gpioSerialPort: COM5
 gpioBaudRate: 119200
 gpioLogFilename: gpio_log.csv
-videoFolder: D:/multi_test
+videoFolder: D:/random_foraging/WT7_day22_outdoorLearn_101426
 appendDateTimeSuffix: true

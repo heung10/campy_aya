@@ -24,8 +24,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from .config_model import camera_names
-from .status import collect_status
+from .config_model import camera_names, resolved_save_folder
+from .status import collect_status, camera_diagnostics
 
 
 CAMERA_PROGRESS_RE = re.compile(
@@ -162,6 +162,16 @@ class LiveTab(QWidget):
         rows, _ = collect_status(self.config_data, self.recording_phase)
         rows = self._apply_runtime_rows(rows)
         self._populate_table(rows)
+        for control in self.exposure_rows:
+            data = camera_diagnostics(resolved_save_folder(self.config_data)/control['camera_name'])
+            if data:
+                applied = data.get('appliedExposureUs')
+                pending = data.get('pendingExposureUs')
+                text = 'Applied: {} ms'.format('{:.3f}'.format(float(applied)/1000) if applied is not None else '-')
+                if pending is not None:
+                    text += ' | Pending: {:.3f} ms'.format(float(pending)/1000)
+                text += ' | {}'.format(data.get('exposureState', 'idle'))
+                control['status'].setText(text)
 
     def update_runtime_from_line(self, line):
         exposure_match = CAMERA_EXPOSURE_RE.match(line)
@@ -221,6 +231,8 @@ class LiveTab(QWidget):
         if self.recording_phase not in ["recording", "stopping"]:
             return rows
         for row in rows:
+            if 'status age ' in row.notes:
+                continue  # New telemetry is fresher than the legacy progress print.
             runtime = self.runtime_rows.get(row.device)
             if runtime is None:
                 continue
@@ -346,15 +358,18 @@ class LiveTab(QWidget):
             button.clicked.connect(
                 lambda _checked=False, name=camera_name, field=spin: self._request_exposure_change(name, field)
             )
-            grid_row = index // 2
+            grid_row = (index // 2) * 2
             col_offset = (index % 2) * 3
             self.exposure_layout.addWidget(label, grid_row, col_offset)
             self.exposure_layout.addWidget(spin, grid_row, col_offset + 1)
             self.exposure_layout.addWidget(button, grid_row, col_offset + 2)
+            status = QLabel('Applied: - | Pending: -')
+            self.exposure_layout.addWidget(status, grid_row + 1, col_offset, 1, 3)
             self.exposure_rows.append({
                 "camera_name": camera_name,
                 "spin": spin,
                 "button": button,
+                "status": status,
             })
 
         self.exposure_layout.setColumnStretch(1, 1)

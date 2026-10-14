@@ -111,10 +111,13 @@ class PreviewTab(QWidget):
 
         self.preview_timer = QTimer(self)
         self.preview_timer.timeout.connect(self.refresh_previews)
-        self.preview_timer.start(200)
+        self.preview_timer.start(50)
 
     def set_config(self, data, path=""):
         self.config_data = data or {}
+        requested = float(self.config_data.get("displayFrameRate", 0) or 5)
+        rate = min(max(requested, 1), float(self.config_data.get("frameRate", 40)))
+        self.preview_timer.setInterval(max(1, int(round(1000.0 / rate))))
         self.config_path = path or ""
         self.elapsed_seconds = 0.0
         self._update_duration_label()

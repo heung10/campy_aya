@@ -5,6 +5,8 @@ Read saved campy output files into compact GUI status rows.
 from __future__ import print_function
 
 import csv
+import json
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -50,10 +52,18 @@ def _camera_status(name, save_folder, expected_rate, process_state):
     live_csv = camera_dir / "live_status.csv"
     video_files = sorted(camera_dir.glob("*.mp4")) if camera_dir.exists() else []
 
-    frame_count = _csv_data_rows(frame_csv)
     writer_count = _writer_count(writer_csv)
     metadata = _metadata(metadata_csv)
     live_status = _live_status(live_csv)
+    diagnostics = camera_diagnostics(camera_dir)
+    active = process_state in ["recording", "stopping", "ready", "preparing", "running"]
+    # Never rescan the growing per-frame CSV on every GUI refresh.
+    if active:
+        frame_count = int(live_status.get('framesCollected', 0) or 0)
+    else:
+        frame_count = int(metadata.get('totalFrames', 0) or 0)
+        if not frame_count:
+            frame_count = writer_count if writer_count is not None else _csv_data_rows(frame_csv)
     total_frames = metadata.get("totalFrames")
     frame_gap_count = metadata.get("frameIdGapCount")
     frames_queued = metadata.get("framesQueued")
@@ -77,7 +87,7 @@ def _camera_status(name, save_folder, expected_rate, process_state):
 
     if process_state in ["recording", "stopping"] and live_status:
         state = "Recording" if process_state == "recording" else "Stopping"
-    elif frame_count or writer_count is not None or total_frames:
+    elif frame_count or writer_count is not None or (_as_float(total_frames) or 0) > 0:
         state = "Saved"
     elif process_state == "recording":
         state = "Recording"
@@ -103,6 +113,17 @@ def _camera_status(name, save_folder, expected_rate, process_state):
         notes.append("queued {}".format(frames_queued))
     if process_state in ["recording", "stopping"] and live_status:
         notes = ["elapsed {} sec".format(live_status.get("elapsedSec", "-"))]
+    if active and diagnostics and 'framesCollected' in diagnostics:
+        age = max(0.0, time.time()-float(diagnostics['updatedEpochSec']))
+        count_text = '{} frames'.format(diagnostics['framesCollected'])
+        recent = float(diagnostics.get('recentRateHz', 0)) if age < 2.5 else 0.0
+        rate_text = '{:.1f} Hz recent / {:.1f} avg'.format(recent, float(diagnostics.get('fps', 0)))
+        notes = ['status age {:.1f}s'.format(age),
+                 'lag ~{:.3f}s'.format(float(diagnostics.get('deliveryLagEstimateSec', 0))),
+                 'missing slots {}'.format(diagnostics.get('missingSlotCount', 0)),
+                 'writer queue {}'.format(diagnostics.get('writerQueueFrames', 0))]
+        if age > 2.5 and process_state == 'recording':
+            state = 'Stale'
 
     last_update = _last_update([live_csv, frame_csv, writer_csv, metadata_csv])
     tile = {
@@ -114,6 +135,14 @@ def _camera_status(name, save_folder, expected_rate, process_state):
     }
     row = StatusRow(name, state, count_text, rate_text, last_update, tile["notes"])
     return row, tile
+
+
+def camera_diagnostics(camera_dir):
+    try:
+        with (Path(camera_dir)/'acquisition_status.json').open(encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
 
 
 def _gpio_status(config_data, save_folder, process_state):

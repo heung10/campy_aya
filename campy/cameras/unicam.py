@@ -9,6 +9,7 @@ from datetime import datetime
 import numpy as np
 from collections import deque
 import imageio.v2 as imageio
+from campy.recording_runtime import MetadataJournal, RuntimeStatus, LatestWorker, FRAME_HEADER, bounded_call, atomic_json
 
 try:
 	from scipy import io as sio
@@ -167,7 +168,7 @@ def CountFPS(cam_params, grabdata, frameNumber, timeStamp):
 	if frameNumber % grabdata["chunkLengthInFrames"] == 0:
 		timeElapsed = timeStamp - grabdata["timeStamp"][0]
 		fpsCount = round((frameNumber - 1) / timeElapsed, 1)
-		SaveLiveStatus(cam_params, frameNumber, fpsCount, round(timeElapsed))
+		# RuntimeStatus publishes the same schema outside the acquisition loop.
 		print('{} collected {} frames at {} fps for {} sec.'\
 			.format(grabdata["cameraName"], frameNumber, fpsCount, round(timeElapsed)), flush=True)
 
@@ -283,207 +284,191 @@ def ApplyRuntimeCameraControl(cam, camera, cam_params, frameNumber):
 
 
 def GrabFrames(cam_params, writeQueue, dispQueue, stopReadQueue, stopWriteQueue, readyQueue=None, triggerStartEvent=None, stopEvent=None, cameraInitialized=None):
-	# Open the camera object
-	cam, camera, cam_params = OpenCamera(cam_params, stopWriteQueue)
-	if cameraInitialized is not None:
-		cameraInitialized.set()
-	if camera is None:
-		return
-
-	# Create dictionary for appending frame number and timestamp information
+	camera = None
+	journal = runtime = preview = None
 	grabdata = GrabData(cam_params)
 	cam_params["framesQueued"] = 0
 	cam_params["queueHighWaterMark"] = 0
-
-	# Start grabbing frames from the camera
-	grabbing = StartGrabbing(camera, cam_params, cam)
-	if not grabbing or camera is None:
-		return
-	WaitForTriggerStart(cam_params, readyQueue, triggerStartEvent)
-
-	frameNumber = 0
-	stop_drain_started = None
-	post_stop_drain_sec = float(cam_params.get("postStopDrainSec", 2.0))
-	while(not stopReadQueue):
-		if stopEvent is not None and stopEvent.is_set():
-			if stop_drain_started is None:
-				stop_drain_started = time.perf_counter()
-			elif time.perf_counter() - stop_drain_started >= post_stop_drain_sec:
-				print(
-					"{} stop drain reached {} sec; closing camera.".format(
-						cam_params["cameraName"],
-						post_stop_drain_sec,
-					),
-					flush=True,
-				)
-				break
-		try:
-			# Grab image from camera buffer if available
-			grabResult = cam.GrabFrame(camera, frameNumber, cam_params)
-
-			if hasattr(cam, "GrabSucceeded") and not cam.GrabSucceeded(grabResult):
-				grabdata["failedGrabCount"] += 1
-				cam.ReleaseFrame(grabResult)
-				time.sleep(0.001)
-				continue
-
-			# Append numpy array to writeQueue for writer to append to file
-			img = cam.GetImageArray(grabResult)
-			writeQueue.append(img)
-			cam_params["framesQueued"] += 1
-			cam_params["queueHighWaterMark"] = max(cam_params["queueHighWaterMark"], len(writeQueue))
-
-			# Append timeStamp and frameNumber to grabdata
-			frameNumber += 1
-			grabdata['frameNumber'].append(frameNumber) # first frame = 1
-			timeStamp = cam.GetTimeStamp(grabResult)
-			grabdata['timeStamp'].append(timeStamp)
-			hostDateTime = datetime.now()
-			hostTimeStamp = time.perf_counter()
-			grabdata['hostTimeStamp'].append(hostTimeStamp)
-			grabdata['hostDateTimeIso'].append(hostDateTime.isoformat(timespec="microseconds"))
-			grabdata['hostDateTimeEpochSec'].append("{:.6f}".format(hostDateTime.timestamp()))
-			if grabdata["firstHostTime"] is None:
-				grabdata["firstHostTime"] = hostTimeStamp
-			frameID = cam.GetFrameID(grabResult)
-			if grabdata["frameID"] and frameID != grabdata["frameID"][-1] + 1:
-				grabdata["frameIdGapCount"] += 1
-			grabdata["frameID"].append(frameID)
-			cam_params = ApplyRuntimeCameraControl(cam, camera, cam_params, frameNumber)
-
-			# Display/save converted, downsampled previews without touching the
-			# recording queue. GUI preview files are latest-frame-only.
-			if frameNumber % grabdata["frameRatio"] == 0:
-				if cam_params["displayFrameRate"] > 0:
-					cam.DisplayImage(cam_params, dispQueue, grabResult)
-				SaveGuiPreviewFrame(cam_params, img)
-
-			CountFPS(cam_params, grabdata, frameNumber, timeStamp)
-
-			cam.ReleaseFrame(grabResult)
-
-			if ShouldStopAcquisition(cam_params, grabdata, frameNumber):
-				break
-
-		except Exception as e:
-			# External-triggered Basler acquisition can legitimately poll between
-			# triggers, so suppress timeout spam and keep waiting for the next frame.
-			if cam_params["cameraMake"] == "basler" and "Grab timed out" in str(e):
-				if stopEvent is not None and stopEvent.is_set():
-					break
-				grabdata["timeoutCount"] += 1
-				time.sleep(0.001)
-				continue
-			if cam_params["cameraMake"] == "basler" and "Pixel format currently not supported" in str(e):
-				grabdata["failedGrabCount"] += 1
-				time.sleep(0.001)
-				continue
-			grabdata["otherErrorCount"] += 1
-			if cam_params["cameraDebug"]:
-				logging.error('Caught exception at cameras/unicam.py GrabFrames: {}'.format(e))
-			time.sleep(0.001)
-
-	# Close the camaera, save metadata, and tell writer and display to close
-	cam.CloseCamera(cam_params, camera)
-	SaveMetadata(cam_params, grabdata)
-	if cam_params["displayFrameRate"] > 0:
-		dispQueue.append('STOP')
-	stopWriteQueue.append('STOP')
-
-
-def SaveMetadata(cam_params, grabdata):
-	full_folder_name = os.path.join(cam_params["saveFolder"], cam_params["cameraName"])
-
 	try:
-		# Zero timeStamps
-		timeFirstGrab = grabdata["timeStamp"][0]
-		grabdata["timeStamp"] = [i - timeFirstGrab for i in grabdata["timeStamp"]]
-		hostFirstGrab = grabdata["hostTimeStamp"][0]
-		grabdata["hostTimeStamp"] = [i - hostFirstGrab for i in grabdata["hostTimeStamp"]]
+		cam, camera, cam_params = OpenCamera(cam_params, stopWriteQueue)
+		if cameraInitialized is not None:
+			cameraInitialized.set()
+		if camera is None:
+			raise RuntimeError("Camera could not be opened")
+		folder = os.path.join(cam_params["saveFolder"], cam_params["cameraName"])
+		journal = MetadataJournal(folder, cam_params.get("metadataFlushIntervalSec", 1.0))
+		SaveParameterMetadata(cam_params, grabdata)
+		runtime = RuntimeStatus(cam_params)
+		if cam_params.get("guiPreviewEnabled", False):
+			preview = LatestWorker(lambda img: SaveGuiPreviewFrame(cam_params, img),
+				cam_params.get("guiPreviewFrameRate", 20))
+		if not StartGrabbing(camera, cam_params, cam):
+			raise RuntimeError("Camera failed to start grabbing")
+		WaitForTriggerStart(cam_params, readyQueue, triggerStartEvent)
+		frameNumber = 0
+		stop_drain_started = None
+		post_stop_drain_sec = max(1.0, float(cam_params.get("postStopDrainSec", 30.0)))
+		while not stopReadQueue:
+			if journal.error:
+				raise RuntimeError("Incremental metadata failed: {}".format(journal.error))
+			stopping = stopEvent is not None and stopEvent.is_set()
+			if stopping:
+				if stop_drain_started is None:
+					stop_drain_started = time.perf_counter()
+				elif time.perf_counter()-stop_drain_started >= post_stop_drain_sec:
+					logging.warning("%s drain limit reached; camera buffer may remain", cam_params["cameraName"])
+					break
+			grabResult = None
+			try:
+				grabResult = cam.GrabFrame(camera, frameNumber, cam_params)
+				if hasattr(cam, "GrabSucceeded") and not cam.GrabSucceeded(grabResult):
+					grabdata["failedGrabCount"] += 1
+					continue
+				# Extract a complete row before committing either the image or metadata.
+				img = cam.GetImageArray(grabResult)
+				timeStamp = cam.GetTimeStamp(grabResult)
+				frameID = cam.GetFrameID(grabResult)
+				hostDateTime = datetime.now()
+				hostTimeStamp = time.perf_counter()
+				iso = hostDateTime.isoformat(timespec="microseconds")
+				epoch = "{:.6f}".format(hostDateTime.timestamp())
+				frameNumber += 1
+				if grabdata["frameID"] and frameID != grabdata["frameID"][-1]+1:
+					grabdata["frameIdGapCount"] += 1
+				for key, value in zip(['frameNumber','frameID','timeStamp','hostTimeStamp','hostDateTimeIso','hostDateTimeEpochSec'],
+					[frameNumber,frameID,timeStamp,hostTimeStamp,iso,epoch]):
+					grabdata[key].append(value)
+				if grabdata["firstHostTime"] is None:
+					grabdata["firstHostTime"] = hostTimeStamp
+				writeQueue.append(img)
+				cam_params["framesQueued"] += 1
+				cam_params["queueHighWaterMark"] = max(cam_params["queueHighWaterMark"], len(writeQueue))
+				journal.append([frameNumber,frameID,timeStamp-grabdata['timeStamp'][0],
+					hostTimeStamp-grabdata['hostTimeStamp'][0],iso,epoch])
+				runtime.observe(frameNumber,timeStamp,hostTimeStamp,float(epoch),len(writeQueue))
+				if not stopping:
+					if preview and frameNumber % grabdata["frameRatio"] == 0:
+						# Basler Array is an owned copy. Keep only the latest image reference.
+						preview.submit(img)
+					if frameNumber % grabdata["frameRatio"] == 0 and cam_params["displayFrameRate"] > 0:
+						cam.DisplayImage(cam_params, dispQueue, grabResult)
+				CountFPS(cam_params, grabdata, frameNumber, timeStamp)
+				if ShouldStopAcquisition(cam_params, grabdata, frameNumber) and not stopping:
+					break
+			except Exception as exc:
+				if cam_params["cameraMake"] == "basler" and "Grab timed out" in str(exc):
+					if stopping:
+						break  # Retrieval timeout after draining: no further result available.
+					grabdata["timeoutCount"] += 1
+				elif "Pixel format currently not supported" in str(exc):
+					grabdata["failedGrabCount"] += 1
+				else:
+					grabdata["otherErrorCount"] += 1
+					logging.exception("%s frame acquisition failed", cam_params["cameraName"])
+				if journal.error:
+					raise
+				time.sleep(.001)
+			finally:
+				if grabResult is not None:
+					cam.ReleaseFrame(grabResult)
+			# All SDK controls stay on the camera owner thread, after releasing buffer.
+			if not stopping:
+				runtime.apply_pending(cam, camera)
+	except BaseException:
+		logging.exception("Acquisition ended unexpectedly for %s", cam_params["cameraName"])
+		if readyQueue is not None:
+			readyQueue.put({'error': 'Camera {} acquisition failed'.format(cam_params['cameraName'])})
+		if stopEvent is not None:
+			stopEvent.set()
+	finally:
+		if cameraInitialized is not None:
+			cameraInitialized.set()
+		# Signal the writer immediately; it still drains its entire image queue.
+		stopWriteQueue.append('STOP')
+		if preview:
+			preview.close()
+		if runtime:
+			runtime.close()
+		if journal:
+			try:
+				journal.close()
+			except Exception:
+				logging.exception("Metadata journal close failed; preserving partial CSV")
+		# Save before hardware close: a hung device cannot prevent exports.
+		SaveMetadata(cam_params, grabdata, write_frame_csv=journal is None or
+			(journal.error is not None and not journal.thread.is_alive()))
+		if camera is not None:
+			def close_camera():
+				try:
+					if hasattr(cam, 'ReadTransportStatistics'):
+						atomic_json(Path(cam_params['saveFolder'])/cam_params['cameraName']/'transport_diagnostics.json',
+							cam.ReadTransportStatistics(camera))
+				except Exception:
+					logging.exception('Transport statistics unavailable')
+				finally:
+					cam.CloseCamera(cam_params, camera)
+			bounded_call("Close camera " + cam_params["cameraName"],
+				close_camera, 5.0)
+		if cam_params["displayFrameRate"] > 0:
+			dispQueue.append('STOP')
 
-		# Get the frame and time counts to save into metadata
-		frame_count = grabdata['frameNumber'][-1]
-		time_count = grabdata['timeStamp'][-1]
-		fps_count = int(round(frame_count/time_count))
-		print('{} saved {} frames at {} fps.'.format(cam_params["cameraName"], frame_count, fps_count))
 
-		meta = cam_params
+def SaveParameterMetadata(cam_params, grabdata):
+	folder = Path(cam_params["saveFolder"]) / cam_params["cameraName"]
+	folder.mkdir(parents=True, exist_ok=True)
+	meta = dict(cam_params)
+	times = grabdata['timeStamp']
+	host = grabdata['hostTimeStamp']
+	meta.update(totalFrames=len(times), totalTime=times[-1]-times[0] if times else 0.0,
+		hostTotalTime=host[-1]-host[0] if host else 0.0)
+	for key in ['timeoutCount','failedGrabCount','otherErrorCount','frameIdGapCount']:
+		meta[key] = grabdata[key]
+	for key in ['framesQueued','queueHighWaterMark']:
+		meta[key] = cam_params.get(key, 0)
+	path = folder/'metadata.csv'
+	temp = folder/'metadata.csv.tmp'
+	with temp.open('w',newline='') as f:
+		w = csv.writer(f,quoting=csv.QUOTE_ALL)
+		for key,value in meta.items():
+			if isinstance(value,(list,str,int,float)):
+				w.writerow([key,value])
+	os.replace(str(temp),str(path))
 
-		# Save frame data to numpy file
-		npy_filename = os.path.join(full_folder_name, 'frametimes.npy')
-		x = np.array([
-			grabdata['frameNumber'],
-			grabdata['frameID'],
-			grabdata['timeStamp'],
-			grabdata['hostTimeStamp'],
-			grabdata['hostDateTimeIso'],
-			grabdata['hostDateTimeEpochSec'],
-		], dtype=object)
-		np.save(npy_filename,x)
 
-		# Also save frame data to MATLAB file
+def SaveMetadata(cam_params, grabdata, write_frame_csv=True):
+	folder = Path(cam_params["saveFolder"]) / cam_params["cameraName"]
+	folder.mkdir(parents=True, exist_ok=True)
+	keys = ['frameNumber','frameID','timeStamp','hostTimeStamp','hostDateTimeIso','hostDateTimeEpochSec']
+	data = {key:list(grabdata[key]) for key in keys}
+	for key in ['timeStamp','hostTimeStamp']:
+		if data[key]:
+			first = data[key][0]
+			data[key] = [value-first for value in data[key]]
+	def save_npy():
+		with (folder/'frametimes.npy.tmp').open('wb') as f:
+			np.save(f,np.array([data[key] for key in keys],dtype=object))
+		os.replace(str(folder/'frametimes.npy.tmp'),str(folder/'frametimes.npy'))
+	def save_mat():
 		if sio is not None:
-			mat_filename = os.path.join(full_folder_name, 'frametimes.mat')
-			matdata = {};
-			matdata['frameNumber'] = grabdata['frameNumber']
-			matdata['frameID'] = grabdata['frameID']
-			matdata['timeStamp'] = grabdata['timeStamp']
-			matdata['hostTimeStamp'] = grabdata['hostTimeStamp']
-			matdata['hostDateTimeIso'] = grabdata['hostDateTimeIso']
-			matdata['hostDateTimeEpochSec'] = grabdata['hostDateTimeEpochSec']
-			sio.savemat(mat_filename, matdata, do_compression=True)
+			sio.savemat(str(folder/'frametimes.mat.tmp'),data,do_compression=True,appendmat=False)
+			os.replace(str(folder/'frametimes.mat.tmp'),str(folder/'frametimes.mat'))
 		else:
-			logging.warning(
-				"Skipping frametimes.mat export for %s because scipy.io is unavailable: %s",
-				cam_params['cameraName'],
-				SCIPY_IO_ERROR,
-			)
-
-		# Save per-frame metadata in a CSV that is easier to inspect directly.
-		frame_meta_filename = os.path.join(full_folder_name, 'frame_metadata.csv')
-		with open(frame_meta_filename, 'w', newline='') as f:
-			w = csv.writer(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-			w.writerow([
-				"savedFrameNumber",
-				"cameraFrameID",
-				"cameraTimeStampSec",
-				"hostTimeStampSec",
-				"hostDateTimeIso",
-				"hostDateTimeEpochSec",
-			])
-			for i in range(len(grabdata['frameNumber'])):
-				w.writerow([
-					grabdata['frameNumber'][i],
-					grabdata['frameID'][i],
-					grabdata['timeStamp'][i],
-					grabdata['hostTimeStamp'][i],
-					grabdata['hostDateTimeIso'][i],
-					grabdata['hostDateTimeEpochSec'][i],
-				])
-
-		# Save parameters and recording metadata to csv spreadsheet
-		csv_filename = os.path.join(full_folder_name, 'metadata.csv')
-		meta['totalFrames'] = grabdata['frameNumber'][-1]
-		meta['totalTime'] = grabdata['timeStamp'][-1]
-		meta['hostTotalTime'] = grabdata['hostTimeStamp'][-1]
-		meta['timeoutCount'] = grabdata['timeoutCount']
-		meta['failedGrabCount'] = grabdata['failedGrabCount']
-		meta['otherErrorCount'] = grabdata['otherErrorCount']
-		meta['frameIdGapCount'] = grabdata['frameIdGapCount']
-		meta['framesQueued'] = cam_params.get("framesQueued", 0)
-		meta['queueHighWaterMark'] = cam_params.get("queueHighWaterMark", 0)
-		
-		with open(csv_filename, 'w', newline='') as f:
-			w = csv.writer(f, delimiter=',', quoting=csv.QUOTE_ALL)
-			for row in meta.items():
-				# Print items that are not objects or dicts
-				if isinstance(row[1],(list,str,int,float)):
-					w.writerow(row)
-
-		print('Saved metadata for {}.'.format(cam_params['cameraName']))
-
-	except Exception as e:
-		logging.error('Caught exception: {}'.format(e))
+			logging.warning('MAT export unavailable: %s', SCIPY_IO_ERROR)
+	def save_csv():
+		with (folder/'frame_metadata.csv.tmp').open('w',newline='') as f:
+			w=csv.writer(f); w.writerow(FRAME_HEADER)
+			w.writerows(zip(*(data[key] for key in keys)))
+		os.replace(str(folder/'frame_metadata.csv.tmp'),str(folder/'frame_metadata.csv'))
+	operations = [('metadata.csv',lambda: SaveParameterMetadata(cam_params,grabdata)),
+		('frametimes.npy',save_npy),('frametimes.mat',save_mat)]
+	if write_frame_csv:
+		operations.insert(0,('frame_metadata.csv',save_csv))
+	for label, operation in operations:
+		try:
+			operation()
+		except Exception:
+			logging.exception('Could not save %s for %s',label,cam_params['cameraName'])
+	print('Saved metadata for {}.'.format(cam_params['cameraName']),flush=True)
 
 
 def CloseSystems(systems, params):
