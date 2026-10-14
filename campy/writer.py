@@ -11,9 +11,8 @@ def OpenWriter(cam_params, queue):
 		file_name = cam_params["videoFilename"]
 		full_file_name = os.path.join(folder_name, file_name)
 
-		if not os.path.isdir(folder_name):
-			os.makedirs(folder_name)
-			print("Made directory {}.".format(folder_name))
+		# MetadataJournal can create this directory concurrently with the writer.
+		os.makedirs(folder_name, exist_ok=True)
 
 		# Flip blue and red for flir camera input
 		if cam_params["pixelFormatInput"] == "bayer_bggr8" and cam_params["cameraMake"] == "flir":

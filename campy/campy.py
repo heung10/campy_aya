@@ -24,6 +24,7 @@ from campy.gpio import logger as gpio_logger
 from campy.trigger import trigger
 from campy.cameras import unicam
 from campy.recording_runtime import bounded_call
+from campy.start_signal import wait_for_start
 
 def OpenSystems():
 	# Configure parameters
@@ -156,9 +157,11 @@ def TriggerControllerEnabled(params):
 	return params["startArduino"] or params["startTriggerController"]
 
 
-def WaitForCamerasReady(readyQueue, acquireResult):
+def WaitForCamerasReady(readyQueue, acquireResult, stopEvent=None):
 	ready_cameras = set()
 	while len(ready_cameras) < params["numCams"]:
+		if stopEvent is not None and stopEvent.is_set():
+			raise RuntimeError("Acquisition worker stopped during preparation; see preceding errors")
 		if GuiStopRequested(params):
 			raise RuntimeError("Preparation cancelled by GUI")
 		if acquireResult.ready():
@@ -220,21 +223,12 @@ def Main():
 			acquireResult = p.map_async(AcquireOneCamera, cameraArgs)
 
 			if params["waitForTriggerStart"]:
-				WaitForCamerasReady(readyQueue, acquireResult)
+				WaitForCamerasReady(readyQueue, acquireResult, stopEvent)
 				print("All cameras are ready. Press Enter to start {} trigger.".format(
 					params["triggerController"]
 				), flush=True)
-				start_requested = threading.Event()
-				def read_start():
-					try:
-						input()
-						start_requested.set()
-					except EOFError:
-						stopEvent.set()
-				threading.Thread(target=read_start, daemon=True).start()
-				while not start_requested.wait(.1):
-					if GuiStopRequested(params) or stopEvent.is_set():
-						return
+				if not wait_for_start(lambda: GuiStopRequested(params) or stopEvent.is_set()):
+					return
 				StartGPIOSafely(systems, params)
 				StartSynchronizedTrigger(systems, params, triggerStartEvent)
 

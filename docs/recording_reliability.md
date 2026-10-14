@@ -117,6 +117,16 @@ Optional YAML/CLI settings (no existing configuration was edited):
 
 ## Validation
 
+Startup fixes: the video writer creates its output directory with `exist_ok=True`
+because the metadata journal may create the same directory concurrently. Start
+input is polled without a daemon `input()` thread, so cancelling preparation or
+encountering a worker failure while the GUI stdin pipe remains open does not leave
+a buffered stdin lock held during interpreter shutdown. Preparation also checks
+the shared worker stop event. Existing configurations and output schemas are unchanged.
+Hardware-free startup regressions cover concurrent directory creation, preservation
+of an existing metadata file, a conflicting file path, GUI Enter, EOF, and cancellation
+with the stdin pipe still open.
+
 Hardware-free tests run with:
 
 ```powershell
